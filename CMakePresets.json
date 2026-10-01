@@ -1,0 +1,80 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "local-debug",
+      "displayName": "Local CPU Debug",
+      "description": "CPU-only development build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/local-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "EVENT_VOXEL_ENABLE_CUDA": false
+      }
+    },
+    {
+      "name": "local-release",
+      "displayName": "Local CPU Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/local-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EVENT_VOXEL_ENABLE_CUDA": false
+      }
+    },
+    {
+      "name": "cuda-debug",
+      "displayName": "CUDA Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cuda-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "EVENT_VOXEL_ENABLE_CUDA": true
+      }
+    },
+    {
+      "name": "cuda-release",
+      "displayName": "CUDA Release",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cuda-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EVENT_VOXEL_ENABLE_CUDA": true
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "local-debug",
+      "configurePreset": "local-debug"
+    },
+    {
+      "name": "local-release",
+      "configurePreset": "local-release"
+    },
+    {
+      "name": "cuda-debug",
+      "configurePreset": "cuda-debug"
+    },
+    {
+      "name": "cuda-release",
+      "configurePreset": "cuda-release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "local-debug",
+      "configurePreset": "local-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "cuda-debug",
+      "configurePreset": "cuda-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

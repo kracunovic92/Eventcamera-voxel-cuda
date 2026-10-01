@@ -1,0 +1,2 @@
+
+namespace event_voxel {}
