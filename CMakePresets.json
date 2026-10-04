@@ -8,8 +8,7 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/local-debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "EVENT_VOXEL_ENABLE_CUDA": false
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
@@ -18,28 +17,29 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/local-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "EVENT_VOXEL_ENABLE_CUDA": false
+        "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
-      "name": "cuda-debug",
-      "displayName": "CUDA Debug",
+      "name": "benchmark-release",
+      "displayName": "CPU Release benchmarks",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/cuda-debug",
+      "binaryDir": "${sourceDir}/build/cpu-benchmark-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EVENT_VOXEL_BUILD_BENCHMARKS": true,
+        "BUILD_TESTING": true
+      }
+    },
+    {
+      "name": "sanitizer-debug",
+      "displayName": "CPU address and undefined behavior sanitizers",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/sanitizer-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "EVENT_VOXEL_ENABLE_CUDA": true
-      }
-    },
-    {
-      "name": "cuda-release",
-      "displayName": "CUDA Release",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/cuda-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "EVENT_VOXEL_ENABLE_CUDA": true
+        "CMAKE_CXX_FLAGS_DEBUG": "-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
       }
     }
   ],
@@ -53,12 +53,12 @@
       "configurePreset": "local-release"
     },
     {
-      "name": "cuda-debug",
-      "configurePreset": "cuda-debug"
+      "name": "benchmark-release",
+      "configurePreset": "benchmark-release"
     },
     {
-      "name": "cuda-release",
-      "configurePreset": "cuda-release"
+      "name": "sanitizer-debug",
+      "configurePreset": "sanitizer-debug"
     }
   ],
   "testPresets": [
@@ -70,8 +70,22 @@
       }
     },
     {
-      "name": "cuda-debug",
-      "configurePreset": "cuda-debug",
+      "name": "local-release",
+      "configurePreset": "local-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "benchmark-release",
+      "configurePreset": "benchmark-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "sanitizer-debug",
+      "configurePreset": "sanitizer-debug",
       "output": {
         "outputOnFailure": true
       }

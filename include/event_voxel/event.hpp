@@ -9,6 +9,6 @@ struct Event {
     std::uint16_t x;
     std::uint16_t y;
     std::int64_t timestamp_us;
-    std::int8_t polarity;
+    std::uint8_t polarity;
 };
 } // namespace event_voxel
