@@ -32,13 +32,14 @@ CMakeUserPresets.json
 *.nsys-rep
 
 # ----------------------------
-# Datasets
+# Datasets and large generated outputs
 # ----------------------------
 
-/data/*
-
-# Keep documentation file if we add one later
-!/data/README.md
+/data/raw/
+/data/processed/
+/external/
+/results/voxels/
+/results/visualizations/
 
 # ----------------------------
 # Python
@@ -47,6 +48,9 @@ CMakeUserPresets.json
 __pycache__/
 *.pyc
 .venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
 
 # ----------------------------
 # IDE
@@ -62,3 +66,4 @@ __pycache__/
 # ----------------------------
 
 .DS_Store
+/venv*

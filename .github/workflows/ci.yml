@@ -1,4 +1,4 @@
-name: C++ CI
+name: CPU correctness and hygiene
 
 on:
   push:
@@ -7,36 +7,52 @@ on:
 jobs:
   formatting:
     runs-on: ubuntu-24.04
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install clang-format
+      - name: Install formatter
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format-19
+      - name: Check C++ and future CUDA formatting
+        run: bash scripts/check-format.sh
+      - name: Check Python syntax
+        run: python3 -m compileall -q tools tests/python
 
-      - name: Check formatting
-        run: |
-          git ls-files -z -- '*.cpp' '*.hpp' '*.h' \
-            | xargs -0 -r clang-format-19 --dry-run --Werror
-
-  build-and-test:
+  cpp-tests:
     runs-on: ubuntu-24.04
-
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [local-debug, local-release, sanitizer-debug]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install dependencies
+      - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build g++
-
       - name: Configure
-        run: cmake --preset local-debug
-
+        run: cmake --preset ${{ matrix.preset }}
       - name: Build
-        run: cmake --build --preset local-debug --parallel 2
+        run: cmake --build --preset ${{ matrix.preset }} --parallel 2
+      - name: Test
+        run: ctest --preset ${{ matrix.preset }}
 
-      - name: Run tests
-        run: ctest --test-dir build/local-debug --output-on-failure
+  python-pipeline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install build tools and Python venv
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ python3-venv
+      - name: Install pinned Python packages
+        run: make setup PYTHON_FOR_VENV=python
+      - name: Build CPU application
+        run: |
+          cmake --preset local-debug -DBUILD_TESTING=OFF
+          cmake --build --preset local-debug --parallel 2
+      - name: Test HDF5 to NumPy round trip
+        run: make test-python

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "independent_runs": 1,
+  "repetitions": 2,
+  "schedule_seed": 42,
+  "filter": "BM_CpuVoxelization",
+  "min_time": "0.01s",
+  "warmup": "0",
+  "require_validation": true,
+  "cases": [
+    {"dataset": "80_balls", "window_id": "first_100000", "bins": [2, 5]}
+  ]
+}
