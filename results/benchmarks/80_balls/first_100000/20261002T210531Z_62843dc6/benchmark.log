@@ -1,0 +1,25 @@
+------------------------------------------------------------------------------------------------
+Benchmark                                      Time             CPU   Iterations UserCounters...
+------------------------------------------------------------------------------------------------
+BM_CpuVoxelization/2/real_time             0.951 ms        0.950 ms           13 items_per_second=105.174M/s
+BM_CpuVoxelization/2/real_time             0.948 ms        0.948 ms           13 items_per_second=105.505M/s
+BM_CpuVoxelization/2/real_time_mean        0.949 ms        0.949 ms            2 items_per_second=105.34M/s
+BM_CpuVoxelization/2/real_time_median      0.949 ms        0.949 ms            2 items_per_second=105.34M/s
+BM_CpuVoxelization/2/real_time_stddev      0.002 ms        0.001 ms            2 items_per_second=234.377k/s
+BM_CpuVoxelization/2/real_time_cv           0.22 %          0.13 %             2 items_per_second=0.22%
+BM_CpuVoxelization/5/real_time              1.17 ms         1.16 ms            9 items_per_second=85.7876M/s
+BM_CpuVoxelization/5/real_time              1.03 ms         1.03 ms            9 items_per_second=96.862M/s
+BM_CpuVoxelization/5/real_time_mean         1.10 ms         1.10 ms            2 items_per_second=91.3248M/s
+BM_CpuVoxelization/5/real_time_median       1.10 ms         1.10 ms            2 items_per_second=91.3248M/s
+BM_CpuVoxelization/5/real_time_stddev      0.094 ms        0.093 ms            2 items_per_second=7.83078M/s
+BM_CpuVoxelization/5/real_time_cv           8.57 %          8.49 %             2 items_per_second=8.57%
+2026-10-02T23:05:31+02:00
+Running /home/lazar/Desktop/event-voxel-cuda/build/cpu-benchmark-release/event_voxel_bench_cpu
+Run on (12 X 4390.41 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 512 KiB (x6)
+  L3 Unified 16384 KiB (x1)
+Load Average: 3.31, 3.43, 2.98
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.

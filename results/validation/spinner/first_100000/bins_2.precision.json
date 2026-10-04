@@ -1,0 +1,44 @@
+{
+  "reference": "float64 triangular-weight accumulation",
+  "result": {
+    "passed": true,
+    "voxel_count": 614400,
+    "failed_voxels": 0,
+    "max_absolute_error": 0.00018849052878522343,
+    "mean_absolute_error": 5.443442101931177e-09,
+    "rmse": 2.5306484824920464e-07,
+    "worst_voxel": {
+      "bin": 0,
+      "y": 296,
+      "x": 565,
+      "actual": 338.059814453125,
+      "reference": 338.0596259625962
+    },
+    "tolerances": {
+      "absolute": 0.001,
+      "relative": 0.0001
+    }
+  },
+  "recording": {
+    "width": 640,
+    "height": 480,
+    "event_count": 100000,
+    "start_us": 0,
+    "end_us": 9090,
+    "sha256": "a10a99f8f6449ed13f61f459038b67c3260afebe3604863cc547948a89ef69f6"
+  },
+  "cpu_output": {
+    "path": "/home/lazar/Desktop/event-voxel-cuda/results/voxels/spinner/first_100000/bins_2.npy",
+    "sha256": "6fb040b00bd77fa72a26ee3c8a12389a902e9f1a82b8e1d5e90c779a7af09f01",
+    "shape": [
+      2,
+      480,
+      640
+    ]
+  },
+  "numpy_version": "2.5.3",
+  "cpu_executable": {
+    "path": "/home/lazar/Desktop/event-voxel-cuda/build/cpu-benchmark-release/event_voxel_run_cpu",
+    "sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+  }
+}

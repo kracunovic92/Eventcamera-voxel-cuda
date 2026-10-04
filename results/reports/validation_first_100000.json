@@ -1,0 +1,355 @@
+{
+  "schema_version": 1,
+  "window_id": "first_100000",
+  "bins": [
+    2,
+    5,
+    10
+  ],
+  "datasets": [
+    {
+      "name": "80_balls",
+      "source_sha256": "adfaaf5c3ffed6db67166e3d1015541a9186217537e66611105878d2954aeeae",
+      "binary_sha256": "d9b2bfbdf2dc8ced7d7d5a73b1fe9367c287fddc56c1f2f391fa8df203e8ba87",
+      "event_count": 100000,
+      "start_us": 54,
+      "end_us": 1166938,
+      "cases": [
+        {
+          "bins": 2,
+          "report": "results/validation/80_balls/first_100000/bins_2.json",
+          "report_sha256": "c3865df5397f250bd878a5eff94d099c975c62563039455384929f9f5d975e7f",
+          "max_absolute_error": 1.6689300537109375e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/80_balls/first_100000/bins_2.precision.json",
+          "precision_report_sha256": "18569b9831208bd8a388e0ac4819a1a8faa2fafef033b9116d7b151ccb09e73f",
+          "precision_max_absolute_error": 1.348771744957844e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "62697a937a69355c45c01e181d8bc36b72492a00c16127ad0d703a8b345ea176",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 5,
+          "report": "results/validation/80_balls/first_100000/bins_5.json",
+          "report_sha256": "6d519d06bcff37f54d78c88e7bc41207dfe16bffe1d0828dbf85bfb0c28bb1fd",
+          "max_absolute_error": 1.9073486328125e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/80_balls/first_100000/bins_5.precision.json",
+          "precision_report_sha256": "d6d6c89f9da58bcd85768d3962526a5f3855bdd6fd17e78c3c4ba56db39170ba",
+          "precision_max_absolute_error": 1.5757091329504647e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "52cb29cc36e8ac4855647f1c255d7f64e4bc8358363981e47206befbabee740e",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 10,
+          "report": "results/validation/80_balls/first_100000/bins_10.json",
+          "report_sha256": "670bb6d8c5cfeb08e63dcc688ac0fa37812e9114919bbea0a9e4caeafc9fc848",
+          "max_absolute_error": 1.430511474609375e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/80_balls/first_100000/bins_10.precision.json",
+          "precision_report_sha256": "75abaf7b5280505919439a7e18610775cd4c808be996d94448bdb31c6b2e7940",
+          "precision_max_absolute_error": 1.5588363293517205e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "e4c28844bd4d959579d47e4345b5b0451bb9d330461b44a2bfe783fcac2bc09e",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        }
+      ]
+    },
+    {
+      "name": "driving_sample",
+      "source_sha256": "fe7879a4dd2964e29b0a27da71b463e48e905e80c274dfebc4c5f757cf0dae42",
+      "binary_sha256": "2e2899cc5924cdaacfcb6fd8abbdf257ab0c3290c98d4b5547a971ea962edfaa",
+      "event_count": 100000,
+      "start_us": 4096,
+      "end_us": 8026,
+      "cases": [
+        {
+          "bins": 2,
+          "report": "results/validation/driving_sample/first_100000/bins_2.json",
+          "report_sha256": "bcbdc03d3f121b02309ed61655b914d888249bd6fabd0a994db6233cab8c7247",
+          "max_absolute_error": 9.5367431640625e-07,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/driving_sample/first_100000/bins_2.precision.json",
+          "precision_report_sha256": "1fa2b06dd2934cf428255bb9d6b17c9868792d93059649888772597bc17fedfe",
+          "precision_max_absolute_error": 6.95963852770376e-07,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "6c3e6af908b40b186055fa3e0270f67b626a386003e592b89cdaa2de8ff17d6d",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 5,
+          "report": "results/validation/driving_sample/first_100000/bins_5.json",
+          "report_sha256": "bdac7f7bb7849d661d130be95920b893f5a6e28f5430830e8f8abbad15233c26",
+          "max_absolute_error": 2.384185791015625e-07,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/driving_sample/first_100000/bins_5.precision.json",
+          "precision_report_sha256": "969102f4676d2c598ba8660b8ba8bab950f57c9c401c33c2f9a81cf08afcd51b",
+          "precision_max_absolute_error": 2.2519332443238227e-07,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "b88ba363e6bedefecea21270bb48f0f1d31e679f35aa363272e0e9ee3b72682d",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 10,
+          "report": "results/validation/driving_sample/first_100000/bins_10.json",
+          "report_sha256": "1e7d9f3ba31fc0bc9ff1b328d445f788626d10c7319a16f86da43bfccd7adc11",
+          "max_absolute_error": 1.1920928955078125e-07,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/driving_sample/first_100000/bins_10.precision.json",
+          "precision_report_sha256": "144dafba4d314cb3ab9ddbc751a9f499d55916fffef3dc770ea9447760bac42a",
+          "precision_max_absolute_error": 1.1829929480455803e-07,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "749da3d7cc98d8512007f4478f806766cc23bff9876cb2faa671a04c8a1a1f9d",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        }
+      ]
+    },
+    {
+      "name": "eye_tracking",
+      "source_sha256": "47260c2539dc81069862007671200ae07359280d8ced56d2774373d199baedce",
+      "binary_sha256": "c5a5cb96daba20c8f94da92bdc21296308871abc39920feb29846a98007bbe9f",
+      "event_count": 100000,
+      "start_us": 0,
+      "end_us": 14399,
+      "cases": [
+        {
+          "bins": 2,
+          "report": "results/validation/eye_tracking/first_100000/bins_2.json",
+          "report_sha256": "2ea2f9f85735d10f8efa69c2070da3e0512746d8322c103a90763e1f00d2ccdc",
+          "max_absolute_error": 3.814697265625e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/eye_tracking/first_100000/bins_2.precision.json",
+          "precision_report_sha256": "994725689105eea9e9d92fe38ce1b6bac9a1c4284c847e84e1e48c3a68e4fc81",
+          "precision_max_absolute_error": 0.0003220718257352928,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "eec429a2fa90dba5d1ec592ba1845e9b703e25f886b52aa2a853f054e8be05d9",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 5,
+          "report": "results/validation/eye_tracking/first_100000/bins_5.json",
+          "report_sha256": "7d309ae8294c6d4cf53f56199ae5707318bb4d93aa10cade5763854a4c6e1d60",
+          "max_absolute_error": 0.0001220703125,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/eye_tracking/first_100000/bins_5.precision.json",
+          "precision_report_sha256": "82bd8413618f9ebccdbeaf9cfaf9c5dcd2bdf8f080b0841e90a77953f474cc82",
+          "precision_max_absolute_error": 9.745108974357208e-05,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "4df2b3942e64c9e70533a177cfdf82fb940068e3c993184a352468f778f083c3",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 10,
+          "report": "results/validation/eye_tracking/first_100000/bins_10.json",
+          "report_sha256": "a2e2b46c88d2c9263b3483f49da7f66656d0b1275be853d20d71387d2e3994d3",
+          "max_absolute_error": 7.62939453125e-05,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/eye_tracking/first_100000/bins_10.precision.json",
+          "precision_report_sha256": "c84b1e3b34081247c71f7c24deea363d3638c6f957e5a4fdc66854512119b220",
+          "precision_max_absolute_error": 5.312122910083872e-05,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "8332bc2164d5b7d80315deafff0e9e50b9125ea2098a3ca78f7c41638a0a93fe",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        }
+      ]
+    },
+    {
+      "name": "hand_spinner",
+      "source_sha256": "cf302e033d209075765f80d7c1474f0d53edd123269ce7ad877f4bcd4bc9ed1d",
+      "binary_sha256": "201876608f6efdc05d4b17839c32f74dafda000cbd8b61d3c5e1fe277c79652b",
+      "event_count": 100000,
+      "start_us": 16,
+      "end_us": 40078,
+      "cases": [
+        {
+          "bins": 2,
+          "report": "results/validation/hand_spinner/first_100000/bins_2.json",
+          "report_sha256": "12fde471ce1ae439225c7887b2aaa31c4c63f442578b430d5834f49a37382dfd",
+          "max_absolute_error": 2.86102294921875e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/hand_spinner/first_100000/bins_2.precision.json",
+          "precision_report_sha256": "ea356935adc4b0c0ba80ba0ffeae4ca8cea5300b42807d7dc650ac63d8e2b5a9",
+          "precision_max_absolute_error": 2.9619083701248883e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "af400ff56fdbdf46c1c5ef0bc073705b523c081afd828e18928d6f996a856f3a",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 5,
+          "report": "results/validation/hand_spinner/first_100000/bins_5.json",
+          "report_sha256": "832012fe080c9089162e8eda52c4ba740c8711e52fc78e1962c61b265a6f6992",
+          "max_absolute_error": 2.86102294921875e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/hand_spinner/first_100000/bins_5.precision.json",
+          "precision_report_sha256": "6ba22b7056cd366e9d2f1e1e97e2e28343d883f952d4479752db29bf61467b51",
+          "precision_max_absolute_error": 2.412489891412406e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "e883190c7b1728c56187c1f973e3f332fbf3ed2a74fd34b7930f0b17d63507fa",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 10,
+          "report": "results/validation/hand_spinner/first_100000/bins_10.json",
+          "report_sha256": "6923e3c2089686c99a4e86343948163409e5e265f05f42346a5a1327613efa18",
+          "max_absolute_error": 1.9073486328125e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/hand_spinner/first_100000/bins_10.precision.json",
+          "precision_report_sha256": "8c5103720807b9357bbfd33fb0b76929f144e02a6c11dfce295cdd6d2545183b",
+          "precision_max_absolute_error": 1.937628541170966e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "08505c8e6f7e32eac51e4e0f7259af7c58ede2427220d547bde4d1704e4ba78b",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        }
+      ]
+    },
+    {
+      "name": "sparklers",
+      "source_sha256": "86b69d741787533233bcca7355116473e4a7a184e18307bf07172e2225b90dd7",
+      "binary_sha256": "f14867f2101a03d533f5fcd3d35246be7b66c6ee18bc15d633badbe7032ac6ee",
+      "event_count": 100000,
+      "start_us": 0,
+      "end_us": 12194,
+      "cases": [
+        {
+          "bins": 2,
+          "report": "results/validation/sparklers/first_100000/bins_2.json",
+          "report_sha256": "b85fa28a229a3ee719de29a1513f158a5576df4f3dbc879fc0beb0bafeaf73ee",
+          "max_absolute_error": 2.384185791015625e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/sparklers/first_100000/bins_2.precision.json",
+          "precision_report_sha256": "b1c1006120a43ba5544cd0ca753fcb714722fc51fd8e76b698270a33bab3f148",
+          "precision_max_absolute_error": 1.9262750878823454e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "698e872454f3b5d2e736c6b779ed2d775cca0ad2b7b806319991ace6aeb7beac",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 5,
+          "report": "results/validation/sparklers/first_100000/bins_5.json",
+          "report_sha256": "63af53a2a7468e496887455e5c1317caa61cfaf96350ea248c229a9716632b2d",
+          "max_absolute_error": 3.933906555175781e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/sparklers/first_100000/bins_5.precision.json",
+          "precision_report_sha256": "cf0c0290e1b04dc6615ccd4406e9ae88f79f738004d5ca0b05250ebca689fe67",
+          "precision_max_absolute_error": 3.5951953658575064e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "97403e0dae51f2c07ec536bdfce4c29ec4b19fcd19e1992acc766829eee3d630",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 10,
+          "report": "results/validation/sparklers/first_100000/bins_10.json",
+          "report_sha256": "18621040b196617badfc801e193b2d901fee381c9eec1268898e57d74a4fc19e",
+          "max_absolute_error": 3.337860107421875e-06,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/sparklers/first_100000/bins_10.precision.json",
+          "precision_report_sha256": "0fce995da712a5e90b0736436c43f853109c74f6db0ab42b30fca16c5cf68f03",
+          "precision_max_absolute_error": 2.876508232496633e-06,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "cb405788511a5a5c166478a1b42b71c2f33135c1d6914b5697c0b65ddd56d127",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        }
+      ]
+    },
+    {
+      "name": "spinner",
+      "source_sha256": "928fe4d977bd01bade55c0da0f38771ccda58a37ff18b3a86f55cc92711e9a67",
+      "binary_sha256": "a10a99f8f6449ed13f61f459038b67c3260afebe3604863cc547948a89ef69f6",
+      "event_count": 100000,
+      "start_us": 0,
+      "end_us": 9090,
+      "cases": [
+        {
+          "bins": 2,
+          "report": "results/validation/spinner/first_100000/bins_2.json",
+          "report_sha256": "3074e799936fab3e8221895eb960eefc7343b53ab9480c501d4dcbbce81d73fb",
+          "max_absolute_error": 3.0517578125e-05,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/spinner/first_100000/bins_2.precision.json",
+          "precision_report_sha256": "488eac6694fc33995c4137347fee3e8464816072886beb4f5e1bc4023d30226c",
+          "precision_max_absolute_error": 0.00018849052878522343,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "6fb040b00bd77fa72a26ee3c8a12389a902e9f1a82b8e1d5e90c779a7af09f01",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 5,
+          "report": "results/validation/spinner/first_100000/bins_5.json",
+          "report_sha256": "4b270283f94751b14e61d7c1716f6832afd5c3a39de9edf3bfa040dd15b932e8",
+          "max_absolute_error": 0.000152587890625,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/spinner/first_100000/bins_5.precision.json",
+          "precision_report_sha256": "fad1bbab0aa256aa8fd41ee75568bb2f51c386a8f191288651d0bd305a122439",
+          "precision_max_absolute_error": 7.043886756719075e-05,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "3ce5404e28aa2413dbf2b7b198fa8b19d1aa13b3d7e7c57d2b4f203e8bff665b",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 10,
+          "report": "results/validation/spinner/first_100000/bins_10.json",
+          "report_sha256": "a12d05739eec4ad8a27284c645440efa310e172d40dbefd5167f233448b46466",
+          "max_absolute_error": 3.0517578125e-05,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/spinner/first_100000/bins_10.precision.json",
+          "precision_report_sha256": "99ed4910a6902a6fe176e9eb8744edd8d22e62e8be0378e7ac73675957e1d0c1",
+          "precision_max_absolute_error": 2.3839969443884e-05,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "e68b8299e0843f32bcb50f9d6616d899e1f3ad6630b7adcde1a3b3c80355d6f9",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        }
+      ]
+    },
+    {
+      "name": "traffic_monitoring",
+      "source_sha256": "59afb2c078ac4a9e06f9c949bbbac9922bfbb90cd3bcb7548683f0c60f817d7c",
+      "binary_sha256": "25143f13986a648cc51d6c37e1754793d4e7de1894468f6851c7d70633e148f0",
+      "event_count": 100000,
+      "start_us": 48,
+      "end_us": 225065,
+      "cases": [
+        {
+          "bins": 2,
+          "report": "results/validation/traffic_monitoring/first_100000/bins_2.json",
+          "report_sha256": "67c73daa26a571c1e71b7818572e805f4d7f7bfb21654237c7963e30bd63c8f4",
+          "max_absolute_error": 9.5367431640625e-07,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/traffic_monitoring/first_100000/bins_2.precision.json",
+          "precision_report_sha256": "235418f7151216f3538ab1eb323f7a5cc535dbcd3f6ae3754aa481278cbe6c62",
+          "precision_max_absolute_error": 5.863022223273617e-07,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "5e44cd49529844402143d1283f9a14267d4a6b78141cc15d8152c524aba7e767",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 5,
+          "report": "results/validation/traffic_monitoring/first_100000/bins_5.json",
+          "report_sha256": "8f97afabf810526ceb63a8f623dcd6be6dd541ae24936876cf3dc9cefe999159",
+          "max_absolute_error": 4.76837158203125e-07,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/traffic_monitoring/first_100000/bins_5.precision.json",
+          "precision_report_sha256": "2ba68c80b8798a05ba613288e2b823f960b8f4fffed2845bcb9bcc3fdae5ab9a",
+          "precision_max_absolute_error": 2.515941837089031e-07,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "1d3362b74e56ee2331e23117df9beae06cb1dfcd0727eb0bec3c91629475c795",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        },
+        {
+          "bins": 10,
+          "report": "results/validation/traffic_monitoring/first_100000/bins_10.json",
+          "report_sha256": "a6bb8cbcf9b4ff6a7f1961066c90fb8cc324a473e03d1fa7735969ccfed0b637",
+          "max_absolute_error": 2.384185791015625e-07,
+          "failed_voxels": 0,
+          "precision_report": "results/validation/traffic_monitoring/first_100000/bins_10.precision.json",
+          "precision_report_sha256": "991594ce343b6df2ad1479f76e34251674966b20dc83e8329fe1b2aa7c77a7eb",
+          "precision_max_absolute_error": 2.0101511921666315e-07,
+          "precision_failed_voxels": 0,
+          "cpu_output_sha256": "63cde895ad89631d1efe6bbd9e9b778cbd56dcef5a84013a510b86f3bcbcd282",
+          "cpu_executable_sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+        }
+      ]
+    }
+  ],
+  "passed_cases": 21
+}

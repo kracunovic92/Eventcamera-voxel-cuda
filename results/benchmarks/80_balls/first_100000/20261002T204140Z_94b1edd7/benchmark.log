@@ -1,0 +1,25 @@
+------------------------------------------------------------------------------------------------
+Benchmark                                      Time             CPU   Iterations UserCounters...
+------------------------------------------------------------------------------------------------
+BM_CpuVoxelization/2/real_time             0.862 ms        0.862 ms           13 items_per_second=116.04M/s
+BM_CpuVoxelization/2/real_time             0.873 ms        0.870 ms           13 items_per_second=114.531M/s
+BM_CpuVoxelization/2/real_time_mean        0.867 ms        0.866 ms            2 items_per_second=115.286M/s
+BM_CpuVoxelization/2/real_time_median      0.867 ms        0.866 ms            2 items_per_second=115.286M/s
+BM_CpuVoxelization/2/real_time_stddev      0.008 ms        0.006 ms            2 items_per_second=1.06682M/s
+BM_CpuVoxelization/2/real_time_cv           0.93 %          0.64 %             2 items_per_second=0.93%
+BM_CpuVoxelization/5/real_time              1.12 ms         1.12 ms            9 items_per_second=89.1841M/s
+BM_CpuVoxelization/5/real_time              1.23 ms         1.23 ms            9 items_per_second=81.2032M/s
+BM_CpuVoxelization/5/real_time_mean         1.18 ms         1.18 ms            2 items_per_second=85.1936M/s
+BM_CpuVoxelization/5/real_time_median       1.18 ms         1.18 ms            2 items_per_second=85.1936M/s
+BM_CpuVoxelization/5/real_time_stddev      0.078 ms        0.078 ms            2 items_per_second=5.64333M/s
+BM_CpuVoxelization/5/real_time_cv           6.62 %          6.63 %             2 items_per_second=6.62%
+2026-10-02T22:41:41+02:00
+Running /home/lazar/Desktop/event-voxel-cuda/build/cpu-benchmark-release/event_voxel_bench_cpu
+Run on (12 X 4390.41 MHz CPU s)
+CPU Caches:
+  L1 Data 32 KiB (x6)
+  L1 Instruction 32 KiB (x6)
+  L2 Unified 512 KiB (x6)
+  L3 Unified 16384 KiB (x1)
+Load Average: 2.40, 2.93, 2.41
+***WARNING*** CPU scaling is enabled, the benchmark real time measurements may be noisy and will incur extra overhead.

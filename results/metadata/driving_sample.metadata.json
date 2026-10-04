@@ -1,0 +1,58 @@
+{
+  "event_format": {
+    "count": 111484516,
+    "fields": {
+      "p": "int16",
+      "t": "int64",
+      "x": "uint16",
+      "y": "uint16"
+    },
+    "path": "/CD/events",
+    "record_bytes": 16
+  },
+  "recording": {
+    "attributes": {
+      "Date": "2020-09-25 07:48:29",
+      "firmware_version": "3.2.3",
+      "generation": "4.0",
+      "geometry": "1280x720",
+      "integrator_name": "Prophesee",
+      "system_ID": "26",
+      "version": "1.0"
+    },
+    "height": 720,
+    "polarity_encoding": {
+      "0": "negative",
+      "1": "positive"
+    },
+    "timestamp_unit": "us",
+    "width": 1280
+  },
+  "schema_version": 1,
+  "source": {
+    "mtime_ns": 1790946378352221094,
+    "path": "/home/lazar/Desktop/event-voxel-cuda/data/raw/driving_sample.hdf5",
+    "sha256": "fe7879a4dd2964e29b0a27da71b463e48e905e80c274dfebc4c5f757cf0dae42",
+    "size_bytes": 283328263
+  },
+  "statistics": {
+    "event_count": 111484516,
+    "first_timestamp_us": 4096,
+    "invalid_coordinates": 0,
+    "invalid_polarities": 0,
+    "last_timestamp_us": 12500991,
+    "max_timestamp_us": 12500991,
+    "max_x": 1279,
+    "max_y": 719,
+    "min_timestamp_us": 4096,
+    "min_x": 0,
+    "min_y": 0,
+    "negative_events": 51204436,
+    "negative_timestamps": 0,
+    "positive_events": 60280080,
+    "timestamp_order_violations": 0,
+    "timestamps_nondecreasing": true,
+    "validation_passed": true
+  },
+  "status": "valid"
+}

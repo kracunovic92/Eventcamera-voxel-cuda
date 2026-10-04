@@ -1,0 +1,57 @@
+{
+  "result": {
+    "passed": true,
+    "voxel_count": 3072000,
+    "failed_voxels": 0,
+    "max_absolute_error": 3.0517578125e-05,
+    "mean_absolute_error": 1.5943009320414555e-09,
+    "rmse": 4.896842252086561e-08,
+    "worst_voxel": {
+      "bin": 5,
+      "y": 296,
+      "x": 565,
+      "cpu_value": 81.73565673828125,
+      "reference_value": 81.73562622070312
+    },
+    "tolerances": {
+      "absolute": 0.001,
+      "relative": 0.0001
+    }
+  },
+  "recording": {
+    "width": 640,
+    "height": 480,
+    "event_count": 100000,
+    "start_us": 0,
+    "end_us": 9090,
+    "path": "/home/lazar/Desktop/event-voxel-cuda/data/processed/spinner/first_100000/events.bin",
+    "sha256": "a10a99f8f6449ed13f61f459038b67c3260afebe3604863cc547948a89ef69f6"
+  },
+  "cpu_output": {
+    "path": "/home/lazar/Desktop/event-voxel-cuda/results/voxels/spinner/first_100000/bins_10.npy",
+    "sha256": "e68b8299e0843f32bcb50f9d6616d899e1f3ad6630b7adcde1a3b3c80355d6f9",
+    "shape": [
+      10,
+      480,
+      640
+    ]
+  },
+  "cpu_executable": {
+    "path": "/home/lazar/Desktop/event-voxel-cuda/build/cpu-benchmark-release/event_voxel_run_cpu",
+    "sha256": "099d2b5488c07671a962ee2fe743916cbf585f6510a332eb9a2fe89cfefd55ff"
+  },
+  "external_reference": {
+    "repository": "https://github.com/uzh-rpg/rpg_e2depth",
+    "git_revision": "17d453c175d94a6e4e666b4dafb64b072eb2df5d",
+    "source_sha256": "dfb1c40092ea02cdd861e212d22bef8e256994234dab08e7ab35f8606ec8bdd8",
+    "source_modified": false,
+    "adaptations": {
+      "boundary_adaptations": [
+        "first_stamp",
+        "last_stamp"
+      ],
+      "numpy_compatibility_changes": 3
+    },
+    "numpy_version": "2.5.3"
+  }
+}
