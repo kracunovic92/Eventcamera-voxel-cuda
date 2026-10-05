@@ -40,6 +40,7 @@ CMakeUserPresets.json
 /external/
 /results/voxels/
 /results/visualizations/
+/results/cuda/
 
 # ----------------------------
 # Python

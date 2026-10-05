@@ -4,7 +4,7 @@
 #include <utility>
 
 #include "event_voxel/data/event_loader.hpp"
-#include "event_voxel/synthetic_generator.hpp"
+#include "event_voxel/data/synthetic_generator.hpp"
 
 namespace event_voxel {
 

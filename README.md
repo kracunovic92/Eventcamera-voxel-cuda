@@ -1,8 +1,8 @@
 # Event Voxel CUDA
 
 A C++20 reference implementation and reproducible experiment framework for
-temporal event-camera voxelization. CUDA implementations are the next research
-phase. The current numerical rule is signed, linearly interpolated accumulation
+temporal event-camera voxelization. The repository includes three CUDA baseline
+strategies. The current numerical rule is signed, linearly interpolated accumulation
 into a `float32` tensor in `[bins, height, width]` order.
 
 ## Research direction
@@ -76,4 +76,19 @@ independent-run series. See [benchmarking protocol](docs/benchmarking.md).
 - [Reproduction and artifact layout](docs/reproducibility.md)
 - [Research design](docs/research-design.md)
 
-The build remains CPU-only until CUDA kernels and a GPU test machine are added.
+## CUDA build and RunPod preparation
+
+The CUDA backend is optional. For a local compile check, activate the `cuda-dev`
+Conda environment, which supplies `nvcc`, then run:
+
+```bash
+cmake --preset cuda-local-check
+cmake --build --preset cuda-local-check
+ctest --preset cuda-local-check --output-on-failure
+```
+
+The local preset uses the Conda CUDA toolkit and `/usr/bin/g++-15`. CUDA tests
+skip when no NVIDIA GPU is available, so the compile check alone does not
+establish GPU correctness. The `cuda-release` preset is for the remote GPU
+container. See [the RunPod runbook](docs/runpod.md) for image, execution,
+result transfer, and validation steps.

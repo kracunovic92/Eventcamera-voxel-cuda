@@ -1,5 +1,6 @@
 {
   "version": 6,
+
   "configurePresets": [
     {
       "name": "local-debug",
@@ -8,59 +9,127 @@
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/local-debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "Debug",
+        "EVENT_VOXEL_ENABLE_CUDA": false,
+        "EVENT_VOXEL_BUILD_BENCHMARKS": false,
+        "BUILD_TESTING": true
       }
     },
+
     {
       "name": "local-release",
       "displayName": "Local CPU Release",
+      "description": "CPU-only optimized build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/local-release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "EVENT_VOXEL_ENABLE_CUDA": false,
+        "EVENT_VOXEL_BUILD_BENCHMARKS": false,
+        "BUILD_TESTING": true
       }
     },
+
     {
       "name": "benchmark-release",
-      "displayName": "CPU Release benchmarks",
+      "displayName": "CPU Release Benchmarks",
+      "description": "Optimized CPU benchmark build",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/cpu-benchmark-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
+        "EVENT_VOXEL_ENABLE_CUDA": false,
         "EVENT_VOXEL_BUILD_BENCHMARKS": true,
         "BUILD_TESTING": true
       }
     },
+
     {
       "name": "sanitizer-debug",
-      "displayName": "CPU address and undefined behavior sanitizers",
+      "displayName": "CPU Sanitizer Debug",
+      "description": "CPU address and undefined behavior sanitizers",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/sanitizer-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
+        "EVENT_VOXEL_ENABLE_CUDA": false,
+        "EVENT_VOXEL_BUILD_BENCHMARKS": false,
+        "BUILD_TESTING": true,
         "CMAKE_CXX_FLAGS_DEBUG": "-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
       }
+    },
+
+    {
+      "name": "cuda-local-check",
+      "displayName": "Local CUDA Compile Check",
+      "description": "Compile CUDA sources locally without requiring a GPU",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cuda-local-check",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "EVENT_VOXEL_ENABLE_CUDA": true,
+        "EVENT_VOXEL_BUILD_BENCHMARKS": true,
+        "BUILD_TESTING": true,
+
+        "CMAKE_CUDA_COMPILER": "$env{CONDA_PREFIX}/bin/nvcc",
+        "CMAKE_CUDA_HOST_COMPILER": "/usr/bin/g++-15",
+        "CMAKE_CUDA_FLAGS": "-Xcompiler=-B/usr/bin",
+        "CUDAToolkit_ROOT": "$env{CONDA_PREFIX}",
+
+        "CMAKE_CUDA_ARCHITECTURES": "75"
+      }
+    },
+
+    {
+      "name": "cuda-release",
+      "displayName": "Remote CUDA Release",
+      "description": "Release build for a machine with an NVIDIA GPU",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cuda-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EVENT_VOXEL_ENABLE_CUDA": true,
+        "EVENT_VOXEL_BUILD_BENCHMARKS": true,
+        "BUILD_TESTING": true,
+
+        "CMAKE_CUDA_ARCHITECTURES": "native"
+      }
     }
   ],
+
   "buildPresets": [
     {
       "name": "local-debug",
       "configurePreset": "local-debug"
     },
+
     {
       "name": "local-release",
       "configurePreset": "local-release"
     },
+
     {
       "name": "benchmark-release",
       "configurePreset": "benchmark-release"
     },
+
     {
       "name": "sanitizer-debug",
       "configurePreset": "sanitizer-debug"
+    },
+
+    {
+      "name": "cuda-local-check",
+      "configurePreset": "cuda-local-check"
+    },
+
+    {
+      "name": "cuda-release",
+      "configurePreset": "cuda-release"
     }
   ],
+
   "testPresets": [
     {
       "name": "local-debug",
@@ -69,6 +138,7 @@
         "outputOnFailure": true
       }
     },
+
     {
       "name": "local-release",
       "configurePreset": "local-release",
@@ -76,6 +146,7 @@
         "outputOnFailure": true
       }
     },
+
     {
       "name": "benchmark-release",
       "configurePreset": "benchmark-release",
@@ -83,9 +154,26 @@
         "outputOnFailure": true
       }
     },
+
     {
       "name": "sanitizer-debug",
       "configurePreset": "sanitizer-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+
+    {
+      "name": "cuda-local-check",
+      "configurePreset": "cuda-local-check",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+
+    {
+      "name": "cuda-release",
+      "configurePreset": "cuda-release",
       "output": {
         "outputOnFailure": true
       }

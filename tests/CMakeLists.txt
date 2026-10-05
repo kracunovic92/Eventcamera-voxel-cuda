@@ -16,6 +16,10 @@ file(
     "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_*.cpp"
 )
 
+if(NOT TARGET event_voxel_cuda)
+    list(REMOVE_ITEM TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/unit/test_cuda_voxelizer.cpp")
+endif()
+
 add_executable(
     event_voxel_tests
     ${TEST_SOURCES}
@@ -41,6 +45,14 @@ list(
     ${catch2_SOURCE_DIR}/extras
 )
 
+
+if(TARGET event_voxel_cuda)
+    target_link_libraries(
+        event_voxel_tests
+        PRIVATE
+            event_voxel_cuda
+    )
+endif()
 include(Catch)
 
 catch_discover_tests(event_voxel_tests)

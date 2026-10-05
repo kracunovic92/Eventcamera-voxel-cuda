@@ -1,0 +1,8 @@
+{
+  "warmup_iterations": 3,
+  "measurement_iterations": 5,
+  "strategies": ["event-scatter", "pixel-gather", "sort-reduce"],
+  "event_counts": [1000, 10000],
+  "bins": [5],
+  "workloads": ["uniform", "collision-heavy"]
+}

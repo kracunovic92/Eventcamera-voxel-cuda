@@ -1,5 +1,5 @@
 
-#include "event_voxel/synthetic_generator.hpp"
+#include "event_voxel/data/synthetic_generator.hpp"
 
 #include <algorithm>
 #include <cmath>
