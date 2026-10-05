@@ -37,6 +37,7 @@ add_library(
     event_voxel_common
     src/common/validation.cpp
     src/data/binary_event_loader.cpp
+    src/data/sample_event_batch.cpp
     src/data/synthetic_generator.cpp
     src/io/npy_writer.cpp
 )
@@ -224,6 +225,9 @@ if(EVENT_VOXEL_ENABLE_CUDA)
         PRIVATE
             event_voxel_cuda
     )
+
+    add_executable(event_voxel_verify_cuda apps/verify_cuda.cpp)
+    target_link_libraries(event_voxel_verify_cuda PRIVATE event_voxel_cpu event_voxel_cuda)
 
     if(EVENT_VOXEL_BUILD_BENCHMARKS)
         add_executable(event_voxel_bench_cuda benchmarks/bench_cuda.cpp)

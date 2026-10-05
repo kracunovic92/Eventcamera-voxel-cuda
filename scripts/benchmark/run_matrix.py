@@ -3,11 +3,12 @@
 
 import argparse
 import csv
-import itertools
+import hashlib
 import json
 import math
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -17,8 +18,17 @@ from pathlib import Path
 
 
 FIELDS = ["strategy", "workload", "event_count", "bins", "iteration", "end_to_end_ms"]
+OUTPUT_FIELDS = ["strategy", "workload", "dataset", "dataset_sha256", "event_count", "bins",
+                 "iteration", "end_to_end_ms"]
 STRATEGIES = {"event-scatter", "pixel-gather", "sort-reduce"}
-WORKLOADS = {"uniform", "collision-heavy"}
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for block in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def command(*args):
@@ -40,7 +50,7 @@ def require_config(path):
     config = json.loads(path.read_text())
     if set(config) != {
         "warmup_iterations", "measurement_iterations", "strategies",
-        "event_counts", "bins", "workloads",
+        "bins", "datasets",
     }:
         raise ValueError("config has missing or unknown fields")
     for name in ("warmup_iterations", "measurement_iterations"):
@@ -49,8 +59,6 @@ def require_config(path):
             raise ValueError(f"{name} must be a valid integer")
     for name, allowed, minimum in (
         ("strategies", STRATEGIES, None),
-        ("workloads", WORKLOADS, None),
-        ("event_counts", None, 1),
         ("bins", None, 2),
     ):
         values = config[name]
@@ -60,6 +68,29 @@ def require_config(path):
             raise ValueError(f"{name} contains an unsupported value")
         if minimum is not None and any(type(value) is not int or value < minimum for value in values):
             raise ValueError(f"{name} contains an invalid integer")
+    datasets = config["datasets"]
+    if not isinstance(datasets, list) or not datasets:
+        raise ValueError("datasets must be a nonempty list")
+    seen_ids = set()
+    for dataset in datasets:
+        if not isinstance(dataset, dict) or set(dataset) != {"id", "path", "sha256", "event_counts"}:
+            raise ValueError("invalid dataset entry")
+        identifier = dataset["id"]
+        path_text = dataset["path"]
+        if not isinstance(path_text, str):
+            raise ValueError(f"invalid dataset path: {path_text}")
+        relative = Path(path_text)
+        digest = dataset["sha256"]
+        counts = dataset["event_counts"]
+        if (not isinstance(identifier, str) or not re.fullmatch(r"[A-Za-z0-9_.-]+", identifier) or
+            identifier in seen_ids or relative.is_absolute() or
+            ".." in relative.parts or relative.name != "events.bin" or
+            not isinstance(digest, str) or len(digest) != 64 or
+            any(char not in "0123456789abcdef" for char in digest) or
+            not isinstance(counts, list) or not counts or len(counts) != len(set(counts)) or
+            any(type(value) is not int or value < 1 for value in counts)):
+            raise ValueError(f"invalid dataset definition: {identifier}")
+        seen_ids.add(identifier)
     return config
 
 
@@ -68,6 +99,7 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--executable", type=Path, required=True)
     parser.add_argument("--output-root", type=Path, required=True)
+    parser.add_argument("--dataset-root", type=Path, required=True)
     parser.add_argument("--correctness-file", type=Path)
     parser.add_argument("--environment-file", type=Path)
     parser.add_argument("--run-path-file", type=Path)
@@ -75,6 +107,20 @@ def main():
     args = parser.parse_args()
 
     config = require_config(args.config)
+    dataset_root = args.dataset_root.resolve(strict=True)
+    input_files = {}
+    dataset_records = []
+    for dataset in config["datasets"]:
+        candidate = (dataset_root / dataset["path"]).resolve(strict=True)
+        if not candidate.is_relative_to(dataset_root) or not candidate.is_file():
+            raise ValueError(f"invalid dataset path: {dataset['path']}")
+        if sha256_file(candidate) != dataset["sha256"]:
+            raise ValueError(f"dataset hash mismatch: {dataset['id']}")
+        preparation = json.loads(candidate.with_name("metadata.json").read_text())
+        if preparation.get("binary_sha256") != dataset["sha256"]:
+            raise ValueError(f"dataset metadata mismatch: {dataset['id']}")
+        input_files[dataset["id"]] = candidate
+        dataset_records.append({**dataset, "preparation": preparation})
     executable = args.executable.resolve(strict=True)
     if not os.access(executable, os.X_OK):
         raise ValueError(f"benchmark is not executable: {executable}")
@@ -117,6 +163,8 @@ def main():
         "python": platform.python_version(),
         "build_type": "Release",
         "executable": str(executable),
+        "dataset_root": str(dataset_root),
+        "datasets": dataset_records,
         "status": "running",
     }
     metadata_path = run_dir / "metadata.json"
@@ -129,31 +177,34 @@ def main():
     case_count = 0
     try:
         with (run_dir / "measurements.csv").open("w", newline="") as output:
-            writer = csv.DictWriter(output, fieldnames=FIELDS)
+            writer = csv.DictWriter(output, fieldnames=OUTPUT_FIELDS)
             writer.writeheader()
-            for strategy, workload, count, bins in itertools.product(
-                config["strategies"], config["workloads"], config["event_counts"], config["bins"]
-            ):
-                args_list = [str(executable), strategy, str(count), str(bins),
-                             str(config["warmup_iterations"]),
-                             str(config["measurement_iterations"]), workload]
-                result = subprocess.run(args_list, text=True, capture_output=True, check=False)
-                if result.returncode != 0:
-                    raise RuntimeError(f"benchmark failed for {args_list[1:]}: {result.stderr.strip()}")
-                rows = list(csv.DictReader(result.stdout.splitlines()))
-                if not rows or list(rows[0]) != FIELDS or len(rows) != config["measurement_iterations"]:
-                    raise ValueError(f"invalid benchmark CSV for {args_list[1:]}")
-                for iteration, row in enumerate(rows):
-                    if (row["strategy"] != strategy or row["workload"] != workload or
-                        int(row["event_count"]) != count or int(row["bins"]) != bins or
-                        int(row["iteration"]) != iteration or
-                        not math.isfinite(float(row["end_to_end_ms"])) or
-                        float(row["end_to_end_ms"]) <= 0):
-                        raise ValueError(f"invalid benchmark row for {args_list[1:]}")
-                    writer.writerow(row)
-                output.flush()
-                case_count += 1
-                print(f"{case_count}: {strategy} {workload} {count} events {bins} bins", flush=True)
+            for dataset in config["datasets"]:
+                for count in dataset["event_counts"]:
+                    for bins in config["bins"]:
+                        for strategy in config["strategies"]:
+                            args_list = [str(executable), strategy, str(count), str(bins),
+                                         str(config["warmup_iterations"]),
+                                         str(config["measurement_iterations"]), "real",
+                                         str(input_files[dataset["id"]])]
+                            result = subprocess.run(args_list, text=True, capture_output=True, check=False)
+                            if result.returncode != 0:
+                                raise RuntimeError(f"benchmark failed for {args_list[1:]}: {result.stderr.strip()}")
+                            rows = list(csv.DictReader(result.stdout.splitlines()))
+                            if not rows or list(rows[0]) != FIELDS or len(rows) != config["measurement_iterations"]:
+                                raise ValueError(f"invalid benchmark CSV for {args_list[1:]}")
+                            for iteration, row in enumerate(rows):
+                                if (row["strategy"] != strategy or row["workload"] != "real" or
+                                    int(row["event_count"]) != count or int(row["bins"]) != bins or
+                                    int(row["iteration"]) != iteration or
+                                    not math.isfinite(float(row["end_to_end_ms"])) or
+                                    float(row["end_to_end_ms"]) <= 0):
+                                    raise ValueError(f"invalid benchmark row for {args_list[1:]}")
+                                writer.writerow({**row, "dataset": dataset["id"],
+                                                 "dataset_sha256": dataset["sha256"]})
+                            output.flush()
+                            case_count += 1
+                            print(f"{case_count}: {strategy} {dataset['id']} {count} events {bins} bins", flush=True)
         metadata["status"] = "complete"
         metadata["cases"] = case_count
         save_metadata()

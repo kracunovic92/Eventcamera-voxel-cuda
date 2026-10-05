@@ -1,4 +1,6 @@
 #include "event_voxel/cuda/voxelizer.hpp"
+#include "event_voxel/data/binary_event_loader.hpp"
+#include "event_voxel/data/sample_event_batch.hpp"
 
 #include <charconv>
 #include <chrono>
@@ -35,9 +37,17 @@ event_voxel::cuda::Strategy parse_strategy(std::string_view value) {
     throw std::invalid_argument("unknown strategy: " + std::string(value));
 }
 
-event_voxel::EventBatch make_batch(std::size_t event_count, std::string_view workload) {
+event_voxel::EventBatch make_batch(std::size_t event_count, std::string_view workload,
+                                   std::string_view input) {
+    if (workload == "real") {
+        if (input.empty()) {
+            throw std::invalid_argument("real workload requires an input events.bin file");
+        }
+        event_voxel::BinaryEventLoader loader{std::string(input)};
+        return event_voxel::sample_evenly(loader.load(), event_count);
+    }
     if (workload != "uniform" && workload != "collision-heavy") {
-        throw std::invalid_argument("workload must be uniform or collision-heavy");
+        throw std::invalid_argument("workload must be real, uniform, or collision-heavy");
     }
 
     event_voxel::EventBatch batch{};
@@ -69,17 +79,21 @@ event_voxel::EventBatch make_batch(std::size_t event_count, std::string_view wor
 
 int main(int argc, char** argv) {
     try {
-        if (argc != 6 && argc != 7) {
+        if (argc < 6 || argc > 8) {
             throw std::invalid_argument(
                 "usage: event_voxel_bench_cuda STRATEGY EVENT_COUNT BINS WARMUP MEASUREMENTS "
-                "[uniform|collision-heavy]");
+                "[real|uniform|collision-heavy] [events.bin]");
         }
         const auto strategy = parse_strategy(argv[1]);
         const auto event_count = parse_number(argv[2], "event count", 1);
         const auto bins = parse_number(argv[3], "bins", 2);
         const auto warmups = parse_number(argv[4], "warmups", 0);
         const auto iterations = parse_number(argv[5], "measurements", 1);
-        const std::string_view workload = argc == 7 ? argv[6] : "uniform";
+        const std::string_view workload = argc >= 7 ? argv[6] : "uniform";
+        const std::string_view input = argc == 8 ? argv[7] : "";
+        if ((workload == "real") != (argc == 8)) {
+            throw std::invalid_argument("real workload requires exactly one events.bin path");
+        }
         if (event_count > std::numeric_limits<std::size_t>::max() / sizeof(event_voxel::Event)) {
             throw std::overflow_error("event allocation size overflow");
         }
@@ -87,7 +101,7 @@ int main(int argc, char** argv) {
             throw std::runtime_error("no CUDA device is available");
         }
 
-        const auto batch = make_batch(event_count, workload);
+        const auto batch = make_batch(event_count, workload, input);
         const event_voxel::VoxelizationSpec spec{.bins = bins};
         const event_voxel::cuda::CudaVoxelizer voxelizer{strategy};
         for (std::size_t i = 0; i < warmups; ++i) {

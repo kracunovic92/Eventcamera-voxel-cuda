@@ -90,5 +90,6 @@ ctest --preset cuda-local-check --output-on-failure
 The local preset uses the Conda CUDA toolkit and `/usr/bin/g++-15`. CUDA tests
 skip when no NVIDIA GPU is available, so the compile check alone does not
 establish GPU correctness. The `cuda-release` preset is for the remote GPU
-container. See [the RunPod runbook](docs/runpod.md) for image, execution,
-result transfer, and validation steps.
+container. The committed RunPod matrices require the prepared real recordings;
+they are packaged separately from Git. See [the RunPod runbook](docs/runpod.md)
+for dataset transfer, image, execution, result transfer, and validation steps.

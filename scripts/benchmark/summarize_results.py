@@ -17,13 +17,14 @@ def main():
     groups = defaultdict(list)
     with args.measurements.open(newline="") as source:
         for row in csv.DictReader(source):
-            key = (row["strategy"], row["workload"], row["event_count"], row["bins"])
+            key = (row["strategy"], row["workload"], row["dataset"],
+                   row["dataset_sha256"], row["event_count"], row["bins"])
             groups[key].append(float(row["end_to_end_ms"]))
     if not groups:
         raise ValueError("no measurements found")
     with output.open("w", newline="") as target:
         writer = csv.writer(target)
-        writer.writerow(["strategy", "workload", "event_count", "bins", "samples",
+        writer.writerow(["strategy", "workload", "dataset", "dataset_sha256", "event_count", "bins", "samples",
                          "mean_ms", "median_ms", "stddev_ms", "min_ms", "max_ms", "p50_ms", "p95_ms"])
         for key, values in sorted(groups.items()):
             values.sort()
