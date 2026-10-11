@@ -93,3 +93,10 @@ establish GPU correctness. The `cuda-release` preset is for the remote GPU
 container. The committed RunPod matrices require the prepared real recordings;
 they are packaged separately from Git. See [the RunPod runbook](docs/runpod.md)
 for dataset transfer, image, execution, result transfer, and validation steps.
+
+`event_voxel_run_cpu` and `event_voxel_run_cuda` save individual voxel grids and
+JSON run records. The CUDA app requires `--strategy event-scatter`,
+`--strategy pixel-gather`, or `--strategy sort-reduce`. The RunPod driver captures
+all configured CPU and CUDA grids under `data/outputs/` in its session archive,
+then compares them with `scripts/benchmark/compare_outputs.py`. Repeated
+performance measurements remain in the separate benchmark executables.

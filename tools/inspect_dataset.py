@@ -130,8 +130,9 @@ def read_recording_metadata(file: h5py.File) -> dict:
     width = int(geometry_match.group(1))
     height = int(geometry_match.group(2))
 
-    if width == 0 or height == 0:
-        raise ValueError("Sensor dimensions must be positive")
+    max_dimension = np.iinfo(np.uint16).max + 1
+    if not 1 <= width <= max_dimension or not 1 <= height <= max_dimension:
+        raise ValueError("Sensor dimensions must be in [1, 65536]")
 
     return {
         "width": width,
@@ -493,14 +494,13 @@ def main() -> int:
         print("No HDF5 recordings found.")
         return 0
 
+    destinations = [output_path(path, args.input, args.output) for path in recordings]
+    if len(destinations) != len(set(destinations)):
+        parser.error("Recordings with the same stem would overwrite an inspection report")
+
     failures = 0
 
-    for path in recordings:
-        destination = output_path(
-            path,
-            args.input,
-            args.output,
-        )
+    for path, destination in zip(recordings, destinations):
 
         if not args.force and is_cached(
             path,

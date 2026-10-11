@@ -38,6 +38,7 @@ CMakeUserPresets.json
 /data/raw/
 /data/processed/
 /data/exports/
+/data/outputs/
 /external/
 /results/voxels/
 /results/visualizations/

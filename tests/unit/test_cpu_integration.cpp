@@ -6,7 +6,7 @@
 #include <cstddef>
 
 #include "event_voxel/cpu/reference_voxelizer.hpp"
-#include "event_voxel/data/synthetic_event_loader.hpp"
+#include "event_voxel/data/synthetic_generator.hpp"
 
 namespace {
 
@@ -41,8 +41,13 @@ TEST_CASE("CPU voxelization conserves signed contributions", "[cpu][integration]
     config.event_count = 10000;
     config.seed = 42;
 
-    event_voxel::SyntheticEventLoader loader(config);
-    const auto batch = loader.load();
+    const event_voxel::EventBatch batch{
+        .events = event_voxel::generate_events(config),
+        .width = config.width,
+        .height = config.height,
+        .start_us = 0,
+        .end_us = config.duration_us,
+    };
 
     event_voxel::CpuReferenceVoxelizer voxelizer;
 

@@ -224,10 +224,8 @@ if(EVENT_VOXEL_ENABLE_CUDA)
         event_voxel_run_cuda
         PRIVATE
             event_voxel_cuda
+            CUDA::cudart
     )
-
-    add_executable(event_voxel_verify_cuda apps/verify_cuda.cpp)
-    target_link_libraries(event_voxel_verify_cuda PRIVATE event_voxel_cpu event_voxel_cuda)
 
     if(EVENT_VOXEL_BUILD_BENCHMARKS)
         add_executable(event_voxel_bench_cuda benchmarks/bench_cuda.cpp)

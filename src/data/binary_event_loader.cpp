@@ -118,22 +118,25 @@ Event read_event(const std::array<std::uint8_t, kEventSize>& bytes, const Binary
     const auto reserved = read_u16(bytes.data() + 6);
     const auto timestamp = read_i64(bytes.data() + 8);
 
-    const auto error_prefix = "Invalid event at index " + std::to_string(index) + ": ";
+    const auto fail = [index](const char* message) {
+        throw std::runtime_error("Invalid event at index " + std::to_string(index) + ": " +
+                                 message);
+    };
 
     if (reserved != 0) {
-        throw std::runtime_error(error_prefix + "reserved bytes must be zero");
+        fail("reserved bytes must be zero");
     }
 
     if (x >= header.width || y >= header.height) {
-        throw std::runtime_error(error_prefix + "coordinates outside sensor");
+        fail("coordinates outside sensor");
     }
 
     if (polarity > 1) {
-        throw std::runtime_error(error_prefix + "polarity must be 0 or 1");
+        fail("polarity must be 0 or 1");
     }
 
     if (timestamp < header.start_us || timestamp >= header.end_us) {
-        throw std::runtime_error(error_prefix + "timestamp outside recording window");
+        fail("timestamp outside recording window");
     }
 
     // Event's in-memory field order differs from

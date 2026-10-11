@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import struct
 import subprocess
 import sys
@@ -132,6 +133,65 @@ class PipelineRoundTrip(unittest.TestCase):
             "--start-us", 80, "--end-us", 90, expect_success=False)
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse((output / "events.bin").exists())
+
+    def test_preparation_rejects_changed_source(self):
+        original = self.recording.stat()
+        with h5py.File(self.recording, "r+") as source:
+            events = source["CD/events"]
+            event = events[1]
+            event["p"] = 0
+            events[1] = event
+        os.utime(self.recording, ns=(original.st_atime_ns, original.st_mtime_ns))
+        self.assertEqual(self.recording.stat().st_size, original.st_size)
+
+        output = self.root / "changed_source"
+        result = self.run_tool(
+            "prepare_dataset.py", "--input", self.recording,
+            "--report", self.report, "--output", output,
+            expect_success=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("fingerprint", result.stderr)
+        self.assertFalse((output / "events.bin").exists())
+
+    def test_inspection_rejects_unrepresentable_geometry(self):
+        with h5py.File(self.recording, "r+") as source:
+            source.attrs["geometry"] = "65536x2"
+        accepted = self.root / "accepted_geometry"
+        self.run_tool("inspect_dataset.py", "--input", self.recording,
+                      "--output", accepted)
+        accepted_report = json.loads((accepted / "tiny.metadata.json").read_text())
+        self.assertEqual(accepted_report["recording"]["width"], 65536)
+
+        with h5py.File(self.recording, "r+") as source:
+            source.attrs["geometry"] = "65537x2"
+        rejected = self.root / "rejected_geometry"
+        result = self.run_tool("inspect_dataset.py", "--input", self.recording,
+                               "--output", rejected, expect_success=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((rejected / "tiny.metadata.json").exists())
+
+    def test_inspection_rejects_report_name_collisions(self):
+        shutil.copyfile(self.recording, self.root / "tiny.h5")
+        destination = self.root / "collision_reports"
+        result = self.run_tool("inspect_dataset.py", "--input", self.root,
+                               "--output", destination, expect_success=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((destination / "tiny.metadata.json").exists())
+
+    def test_inspection_detects_timestamp_disorder_across_chunks(self):
+        with h5py.File(self.recording, "r+") as source:
+            events = source["CD/events"]
+            event = events[2]
+            event["t"] = 24
+            events[2] = event
+        destination = self.root / "disordered_reports"
+        result = self.run_tool("inspect_dataset.py", "--input", self.recording,
+                               "--output", destination, "--chunk-size", 2,
+                               expect_success=False)
+        self.assertNotEqual(result.returncode, 0)
+        report = json.loads((destination / "tiny.metadata.json").read_text())
+        self.assertEqual(report["status"], "invalid")
+        self.assertEqual(report["statistics"]["timestamp_order_violations"], 1)
 
 
 if __name__ == "__main__":

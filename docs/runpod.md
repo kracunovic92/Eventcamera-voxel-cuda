@@ -80,22 +80,37 @@ EVENT_VOXEL_DATA_ARCHIVE=/workspace/event-voxel-real-data.tar.gz \
 ```
 
 `run_all.sh` checks the environment, working tree, and dataset hashes, builds
-the Release CUDA preset, runs CTest and the `[cuda]` suite, then compares every
-real benchmark case against the CPU reference before timing it. It runs the
-smoke and full matrices in that order. Use `--smoke-only` for the first pod
-validation; run without it for the full matrix after reviewing smoke output.
-Any failed step stops the script. CUDA tests skip without a device during local
-compilation; `run_all.sh` additionally runs
-`event_voxel_run_cuda`, which fails if no CUDA device is usable.
+the Release CUDA preset, and runs CTest and the `[cuda]` suite. Before each
+benchmark matrix, `capture_real.py` runs `event_voxel_run_cpu` and
+`event_voxel_run_cuda` for every dataset, event count, bin count, and CUDA
+strategy. Each app saves a complete float32 `.npy` grid and a JSON run record.
+`compare_outputs.py` reads those saved arrays, writes `comparisons.csv`, and
+stops the run if any GPU grid disagrees with the CPU grid. The independent
+`validate_outputs.py` command provides a pass/fail check from the saved arrays
+without running either voxelizer. The runner then measures the smoke and full
+matrices in that order. Use `--smoke-only` for the first pod validation; run
+without it for the full matrix after reviewing smoke output. Any failed step
+stops the script. CUDA tests skip without a device during local compilation;
+the CUDA app fails if no device is usable.
 The extracted inputs stay at `/workspace/benchmark-datasets`, so a later full
 run can simply use `./scripts/runpod/run_all.sh` on the same pod.
 
-Each matrix creates a new directory under `smoke/` or `full/` with the exact
-config, raw `measurements.csv`, `summary.csv`, Git and host metadata, GPU query,
-environment output, and correctness output. The directory name includes UTC
-time, GPU name, commit prefix, and a random suffix. A failed matrix keeps its
-partial CSV and marks its metadata as failed. Do not use a failed run for
-performance claims.
+Each invocation creates a session directory under `EVENT_VOXEL_RESULT_ROOT`.
+It contains `data/outputs/smoke/` and `data/outputs/full/` with captured grids,
+run records, manifests, and comparison CSVs. The `smoke/` and `full/` benchmark
+directories contain the exact config, raw `measurements.csv`, `summary.csv`,
+Git and host metadata, GPU query, environment output, and correctness output.
+The benchmark directory name includes UTC time, GPU name, commit prefix, and a
+random suffix. A failed matrix keeps its partial CSV and marks its metadata as
+failed. Do not use a failed run for performance claims.
+
+The full matrix saves about 5.76 GiB of uncompressed voxel arrays before the
+result archive is compressed. Allow room for the arrays, archive, and benchmark
+results on the pod. Single app run records include input loading, one
+voxelization call, NumPy export time, process peak RSS, and GPU memory free
+before and after the call. GPU free memory snapshots are not peak allocation
+measurements. The separate benchmark CSV is the source for repeated latency
+statistics; NumPy export and file loading are outside its timed region.
 
 ## Preserve results before ending the pod
 
@@ -111,6 +126,13 @@ tar -tzf <downloaded-archive> | head
 ```
 
 The project creates the archive but does not transfer it automatically.
+After extracting it locally, run
+`python3 scripts/benchmark/validate_outputs.py <session>/data/outputs/full/<capture-id>`
+for a pass/fail check or
+`python3 scripts/benchmark/compare_outputs.py <session>/data/outputs/full/<capture-id>`
+to regenerate the detailed CSV. These scripts use only the saved arrays and
+Python standard library; the absolute pod paths in the per-app run records are
+provenance and are not needed for comparison after transfer.
 
 ## Local verification
 

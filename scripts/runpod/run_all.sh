@@ -16,13 +16,14 @@ fi
 output_root="${EVENT_VOXEL_RESULT_ROOT:-/workspace/experiment-results}"
 dataset_root="${EVENT_VOXEL_DATA_ROOT:-/workspace/benchmark-datasets}"
 mkdir -p "$output_root"
+session_root="$(mktemp -d "$output_root/session-XXXXXXXX")"
 temporary_dir="$(mktemp -d)"
 trap 'rm -rf "$temporary_dir"' EXIT
 
 archive_results() {
     local archive
     archive="$(mktemp --suffix=.tar.gz "/workspace/event-voxel-results-$(git rev-parse --short HEAD)-XXXXXXXX")"
-    tar -C "$output_root" -czf "$archive" .
+    tar -C "$session_root" -czf "$archive" .
     printf 'Result archive: %s\n' "$archive"
     sha256sum "$archive"
 }
@@ -49,18 +50,22 @@ python3 scripts/runpod/prepare_datasets.py \
 cmake --preset cuda-release
 cmake --build --preset cuda-release --parallel
 ctest --preset cuda-release --output-on-failure | tee "$temporary_dir/correctness.txt"
-./build/cuda-release/event_voxel_run_cuda
 ./build/cuda-release/tests/event_voxel_tests '[cuda]' | tee -a "$temporary_dir/correctness.txt"
-python3 scripts/benchmark/verify_real.py \
+python3 scripts/benchmark/capture_real.py \
     --config configs/cuda_benchmark_smoke.json \
     --dataset-root "$dataset_root" \
-    --executable build/cuda-release/event_voxel_verify_cuda | tee -a "$temporary_dir/correctness.txt"
+    --cpu-executable build/cuda-release/event_voxel_run_cpu \
+    --cuda-executable build/cuda-release/event_voxel_run_cuda \
+    --output-root "$session_root/data/outputs/smoke" \
+    --run-path-file "$temporary_dir/smoke_capture_path"
+python3 scripts/benchmark/compare_outputs.py "$(cat "$temporary_dir/smoke_capture_path")" \
+    | tee -a "$temporary_dir/correctness.txt"
 
 python3 scripts/benchmark/run_matrix.py \
     --config configs/cuda_benchmark_smoke.json \
     --executable build/cuda-release/event_voxel_bench_cuda \
     --dataset-root "$dataset_root" \
-    --output-root "$output_root/smoke" \
+    --output-root "$session_root/smoke" \
     --correctness-file "$temporary_dir/correctness.txt" \
     --environment-file "$temporary_dir/environment.txt" \
     --run-path-file "$temporary_dir/smoke_path"
@@ -72,16 +77,21 @@ if [[ "$smoke_only" == true ]]; then
     exit 0
 fi
 
-python3 scripts/benchmark/verify_real.py \
+python3 scripts/benchmark/capture_real.py \
     --config configs/cuda_benchmark_matrix.json \
     --dataset-root "$dataset_root" \
-    --executable build/cuda-release/event_voxel_verify_cuda | tee -a "$temporary_dir/correctness.txt"
+    --cpu-executable build/cuda-release/event_voxel_run_cpu \
+    --cuda-executable build/cuda-release/event_voxel_run_cuda \
+    --output-root "$session_root/data/outputs/full" \
+    --run-path-file "$temporary_dir/full_capture_path"
+python3 scripts/benchmark/compare_outputs.py "$(cat "$temporary_dir/full_capture_path")" \
+    | tee -a "$temporary_dir/correctness.txt"
 
 python3 scripts/benchmark/run_matrix.py \
     --config configs/cuda_benchmark_matrix.json \
     --executable build/cuda-release/event_voxel_bench_cuda \
     --dataset-root "$dataset_root" \
-    --output-root "$output_root/full" \
+    --output-root "$session_root/full" \
     --correctness-file "$temporary_dir/correctness.txt" \
     --environment-file "$temporary_dir/environment.txt" \
     --run-path-file "$temporary_dir/full_path"
