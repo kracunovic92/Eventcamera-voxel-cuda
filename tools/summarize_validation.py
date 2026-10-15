@@ -30,7 +30,7 @@ def main() -> None:
     raw_files = sorted(args.raw_dir.glob("*.hdf5"))
     if not raw_files:
         parser.error("No raw recordings found")
-    summary = {"schema_version": 1, "window_id": args.window_id,
+    summary = {"schema_version": 2, "window_id": args.window_id,
                "bins": args.bins, "datasets": []}
     for raw_path in raw_files:
         dataset = raw_path.stem
@@ -61,34 +61,27 @@ def main() -> None:
                 raise ValueError(f"Selection does not match {args.window_id}: {dataset}")
         cases = []
         for bin_count in args.bins:
-            path = args.validation_dir / dataset / args.window_id / f"bins_{bin_count}.json"
+            path = args.validation_dir / dataset / args.window_id / f"bins_{bin_count}.validation.json"
             report = json.loads(path.read_text())
-            precision_path = path.with_name(f"bins_{bin_count}.precision.json")
-            precision = json.loads(precision_path.read_text())
-            if (not report["result"]["passed"] or
+            references = report.get("references", {})
+            if (report.get("schema_version") != 2 or not report.get("passed") or
+                report.get("backend") != "cpu" or report.get("strategy") != "reference" or
+                set(references) != {"rpg", "precision"} or
+                any(not item["result"]["passed"] for item in references.values()) or
                 report["recording"]["sha256"] != prepared["binary_sha256"] or
-                report["cpu_output"]["shape"][0] != bin_count or
-                not report.get("cpu_executable") or
-                not precision["result"]["passed"] or
-                precision["recording"]["sha256"] != prepared["binary_sha256"] or
-                precision["cpu_output"]["shape"][0] != bin_count or
-                precision["cpu_output"]["sha256"] != report["cpu_output"]["sha256"] or
-                not precision.get("cpu_executable") or
-                precision["cpu_executable"]["sha256"] !=
-                report["cpu_executable"]["sha256"]):
+                report["output"]["shape"][0] != bin_count or
+                not report.get("executable")):
                 raise ValueError(f"Validation mismatch: {path}")
             cases.append({
                 "bins": bin_count,
                 "report": str(path),
                 "report_sha256": sha256(path),
-                "max_absolute_error": report["result"]["max_absolute_error"],
-                "failed_voxels": report["result"]["failed_voxels"],
-                "precision_report": str(precision_path),
-                "precision_report_sha256": sha256(precision_path),
-                "precision_max_absolute_error": precision["result"]["max_absolute_error"],
-                "precision_failed_voxels": precision["result"]["failed_voxels"],
-                "cpu_output_sha256": report["cpu_output"]["sha256"],
-                "cpu_executable_sha256": report["cpu_executable"]["sha256"],
+                "rpg_max_absolute_error": references["rpg"]["result"]["max_absolute_error"],
+                "rpg_failed_voxels": references["rpg"]["result"]["failed_voxels"],
+                "precision_max_absolute_error": references["precision"]["result"]["max_absolute_error"],
+                "precision_failed_voxels": references["precision"]["result"]["failed_voxels"],
+                "cpu_output_sha256": report["output"]["sha256"],
+                "cpu_executable_sha256": report["executable"]["sha256"],
             })
         summary["datasets"].append({
             "name": dataset,

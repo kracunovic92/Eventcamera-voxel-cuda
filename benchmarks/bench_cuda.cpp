@@ -111,6 +111,8 @@ int main(int argc, char** argv) {
         std::cout << "strategy,workload,event_count,bins,iteration,end_to_end_ms\n";
         std::cout << std::fixed << std::setprecision(9);
         for (std::size_t i = 0; i < iterations; ++i) {
+            // voxelize() synchronizes and copies the output to host memory.
+            // The host clock measures the full call, including GPU execution.
             const auto start = std::chrono::steady_clock::now();
             auto grid = voxelizer.voxelize(batch, spec);
             const auto end = std::chrono::steady_clock::now();

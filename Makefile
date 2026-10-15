@@ -30,8 +30,7 @@ BINS ?= 5
 VOXEL_DIR ?= results/voxels/$(DATASET)/$(WINDOW_ID)
 VOXEL_OUTPUT ?= $(VOXEL_DIR)/bins_$(BINS).npy
 VALIDATION_DIR ?= results/validation/$(DATASET)/$(WINDOW_ID)
-VALIDATION_REPORT ?= $(VALIDATION_DIR)/bins_$(BINS).json
-PRECISION_REPORT ?= $(VALIDATION_DIR)/bins_$(BINS).precision.json
+VALIDATION_REPORT ?= $(VALIDATION_DIR)/bins_$(BINS).validation.json
 VISUAL_OUTPUT ?= results/visualizations/$(DATASET)/$(WINDOW_ID)/bins_$(BINS).png
 RPG_REPO ?= external/rpg_e2depth
 
@@ -67,6 +66,7 @@ SYNTH_POSITIVE_PROBABILITY ?= 0.5
 .PHONY: format format-check lint data-inspect data-inspect-all data-prepare synthetic-prepare
 .PHONY: cpu-run visualize verify verify-release verify-all verify-coverage validation-summary
 .PHONY: benchmark-build benchmark-smoke benchmark benchmark-checked benchmark-summary benchmark-matrix
+.PHONY: pipeline-local pipeline-runpod
 
 help:
 	@printf '%s\n' \
@@ -82,6 +82,10 @@ help:
 		'make verify-coverage               Verify first, middle, and last samples' \
 		'make benchmark-checked             Verify benchmark bins, then measure' \
 		'make benchmark-matrix              Run the configured cross-dataset matrix' \
+		'make pipeline-local                Prepare, validate, and benchmark locally' \
+		'make pipeline-runpod               Validate and benchmark on a GPU pod' \
+		'make pipeline-local SMOKE=1        Run a small local pipeline check' \
+		'make pipeline-runpod SMOKE=1       Run a small GPU pipeline check' \
 		'make format / make format-check    Format or check C++ source'
 
 .venv/bin/python:
@@ -160,13 +164,10 @@ visualize: cpu-run
 		--output "$(VISUAL_OUTPUT)"
 
 verify: cpu-run
-	$(PYTHON) tools/verify_external.py --events "$(PREPARED_DATA)" \
+	$(PYTHON) scripts/experiments/validate_outputs.py single --events "$(PREPARED_DATA)" \
 		--voxels "$(VOXEL_OUTPUT)" --rpg-repo "$(RPG_REPO)" \
 		--report "$(VALIDATION_REPORT)" \
-		--cpu-executable "$(BUILD_DIR)/event_voxel_run_cpu"
-	$(PYTHON) tools/verify_precision.py --events "$(PREPARED_DATA)" \
-		--voxels "$(VOXEL_OUTPUT)" --report "$(PRECISION_REPORT)" \
-		--cpu-executable "$(BUILD_DIR)/event_voxel_run_cpu"
+		--executable "$(BUILD_DIR)/event_voxel_run_cpu"
 
 benchmark-build:
 	cmake --preset benchmark-release
@@ -175,13 +176,10 @@ benchmark-build:
 verify-release: benchmark-build
 	ctest --preset benchmark-release
 	$(BENCH_DIR)/event_voxel_run_cpu "$(PREPARED_DATA)" "$(BINS)" "$(VOXEL_OUTPUT)"
-	$(PYTHON) tools/verify_external.py --events "$(PREPARED_DATA)" \
+	$(PYTHON) scripts/experiments/validate_outputs.py single --events "$(PREPARED_DATA)" \
 		--voxels "$(VOXEL_OUTPUT)" --rpg-repo "$(RPG_REPO)" \
 		--report "$(VALIDATION_REPORT)" \
-		--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu"
-	$(PYTHON) tools/verify_precision.py --events "$(PREPARED_DATA)" \
-		--voxels "$(VOXEL_OUTPUT)" --report "$(PRECISION_REPORT)" \
-		--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu"
+		--executable "$(BENCH_DIR)/event_voxel_run_cpu"
 
 # The first N events are a deterministic, memory-bounded sample of each file.
 # Reports for all seven recordings remain separate and addressable.
@@ -193,15 +191,11 @@ verify-all: benchmark-build
 		for bins in $(VERIFY_BINS); do \
 			input="data/processed/$$dataset/first_$(VERIFY_MAX_EVENTS)/events.bin"; \
 			voxels="results/voxels/$$dataset/first_$(VERIFY_MAX_EVENTS)/bins_$$bins.npy"; \
-			report="results/validation/$$dataset/first_$(VERIFY_MAX_EVENTS)/bins_$$bins.json"; \
-			precision="results/validation/$$dataset/first_$(VERIFY_MAX_EVENTS)/bins_$$bins.precision.json"; \
+			report="results/validation/$$dataset/first_$(VERIFY_MAX_EVENTS)/bins_$$bins.validation.json"; \
 			$(BENCH_DIR)/event_voxel_run_cpu "$$input" "$$bins" "$$voxels" || exit $$?; \
-			$(PYTHON) tools/verify_external.py --events "$$input" --voxels "$$voxels" \
+			$(PYTHON) scripts/experiments/validate_outputs.py single --events "$$input" --voxels "$$voxels" \
 				--rpg-repo "$(RPG_REPO)" --report "$$report" \
-				--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
-			$(PYTHON) tools/verify_precision.py --events "$$input" --voxels "$$voxels" \
-				--report "$$precision" \
-				--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
+				--executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
 		done; \
 	done
 	$(MAKE) validation-summary VERIFY_MAX_EVENTS=$(VERIFY_MAX_EVENTS) VERIFY_BINS='$(VERIFY_BINS)'
@@ -229,15 +223,11 @@ verify-coverage: verify-all
 			for bins in $(VERIFY_BINS); do \
 				input="data/processed/$$dataset/$$window/events.bin"; \
 				voxels="results/voxels/$$dataset/$$window/bins_$$bins.npy"; \
-				report="results/validation/$$dataset/$$window/bins_$$bins.json"; \
-				precision="results/validation/$$dataset/$$window/bins_$$bins.precision.json"; \
+				report="results/validation/$$dataset/$$window/bins_$$bins.validation.json"; \
 				$(BENCH_DIR)/event_voxel_run_cpu "$$input" "$$bins" "$$voxels" || exit $$?; \
-				$(PYTHON) tools/verify_external.py --events "$$input" --voxels "$$voxels" \
+				$(PYTHON) scripts/experiments/validate_outputs.py single --events "$$input" --voxels "$$voxels" \
 					--rpg-repo "$(RPG_REPO)" --report "$$report" \
-					--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
-				$(PYTHON) tools/verify_precision.py --events "$$input" --voxels "$$voxels" \
-					--report "$$precision" \
-					--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
+					--executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
 			done; \
 		done; \
 	done
@@ -264,15 +254,11 @@ benchmark-checked: benchmark-build
 	@IFS=, read -ra bins <<< "$(BENCH_BINS)"; \
 	for bin in "$${bins[@]}"; do \
 		voxels="$(VOXEL_DIR)/bins_$$bin.npy"; \
-		report="$(VALIDATION_DIR)/bins_$$bin.json"; \
-		precision="$(VALIDATION_DIR)/bins_$$bin.precision.json"; \
+		report="$(VALIDATION_DIR)/bins_$$bin.validation.json"; \
 		$(BENCH_DIR)/event_voxel_run_cpu "$(PREPARED_DATA)" "$$bin" "$$voxels" || exit $$?; \
-		$(PYTHON) tools/verify_external.py --events "$(PREPARED_DATA)" --voxels "$$voxels" \
+		$(PYTHON) scripts/experiments/validate_outputs.py single --events "$(PREPARED_DATA)" --voxels "$$voxels" \
 			--rpg-repo "$(RPG_REPO)" --report "$$report" \
-			--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
-		$(PYTHON) tools/verify_precision.py --events "$(PREPARED_DATA)" --voxels "$$voxels" \
-			--report "$$precision" \
-			--cpu-executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
+			--executable "$(BENCH_DIR)/event_voxel_run_cpu" || exit $$?; \
 	done
 	$(MAKE) benchmark BENCH_REQUIRE_VALIDATION=1
 
@@ -285,3 +271,9 @@ benchmark-matrix: benchmark-build
 	$(PYTHON) tools/run_benchmark_matrix.py --config "$(MATRIX_CONFIG)" \
 		--executable "$(BENCH_DIR)/event_voxel_bench_cpu" \
 		$(if $(filter 1,$(MATRIX_ALLOW_DIRTY)),--allow-dirty,)
+
+pipeline-local:
+	bash scripts/experiments/pipeline_local.sh $(if $(filter 1,$(SMOKE)),--smoke-only,)
+
+pipeline-runpod:
+	bash scripts/experiments/pipeline_runpod.sh $(if $(filter 1,$(SMOKE)),--smoke-only,)

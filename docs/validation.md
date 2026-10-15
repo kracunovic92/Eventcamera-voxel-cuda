@@ -28,9 +28,10 @@ error distributions matter more than bitwise equality.
    events in bounded chunks and records error statistics and the worst voxel.
 
 `make verify-all` applies checks 4 and 5 to the first 100,000 events of every raw
-recording for 2, 5, and 10 bins by default. It writes one JSON report for each
-reference, recording, window, and bin count. `make benchmark-checked` repeats
-both verifications for every bin count it is about to measure. The summary in
+recording for 2, 5, and 10 bins by default. `validate_outputs.py single` writes
+one `bins_N.validation.json` report containing both references for each
+recording, window, and bin count. `make benchmark-checked` repeats both checks
+for every bin count it is about to measure. The summary in
 `results/reports/validation_first_100000.json` ties these reports to all raw
 source fingerprints and prepared binary hashes.
 `make verify-coverage` additionally checks middle and last 100,000-event
@@ -44,7 +45,35 @@ Both comparisons currently use absolute tolerance `1e-3` and relative tolerance
 on a one-million-event single-pixel case, the observed CPU difference from the
 float64 oracle was about 0.0053 at its worst voxel
 ([report](../results/validation/synthetic/single_pixel_1m/bins_5.precision.json)).
-These are CPU acceptance
-settings, not a final GPU policy. Before accepting CUDA results, characterize
-error on collision workloads and record failed voxel count, maximum absolute
-error, mean absolute error, RMSE, and the worst voxel. Preserve both reports.
+`validate_outputs.py capture` applies the same two references to every saved CPU
+and CUDA grid in a RunPod session, writing `validation.csv`. The linked synthetic
+report above predates the combined report format. Before accepting CUDA results,
+characterize error on collision workloads and record failed voxel count,
+maximum absolute error, mean absolute error, RMSE, and the worst voxel.
+
+## One validation command for saved experiments
+
+`scripts/experiments/validate_outputs.py` has three modes:
+
+| Mode | Input | Output | Use |
+|---|---|---|---|
+| `single` | One prepared `events.bin` and saved `.npy` grid | Combined JSON report | Check an individual CPU or CUDA output. |
+| `capture` | A complete capture directory and its prepared dataset root | `validation.csv` | Check every configured CPU and CUDA output against both independent references. This is the pipeline gate. |
+| `compare-backends` | A complete capture directory | `comparisons.csv` | Investigate differences between saved CPU and CUDA outputs after the reference check. |
+
+For example:
+
+```bash
+python3 scripts/experiments/validate_outputs.py single \
+  --events <prepared-events.bin> --voxels <saved-grid.npy> \
+  --report <validation.json> --backend cuda --strategy event-scatter
+python3 scripts/experiments/validate_outputs.py capture \
+  <capture-directory> --dataset-root <prepared-dataset-root>
+python3 scripts/experiments/validate_outputs.py compare-backends \
+  <capture-directory>
+```
+
+`single` and `capture` check both the pinned RPG implementation and the float64
+oracle by default. `--references precision` can select the float64 check for an
+exploratory run without the RPG checkout. The two reference implementations live
+in `reference_models.py` as internal code; there is one validation entry point.

@@ -6,7 +6,7 @@ The tested local Python environment is Python 3.13.2 with exact package
 versions in `requirements.txt`. `make setup` creates `.venv` and installs them.
 The CI pipeline also checks a clean install on Ubuntu. CMake FetchContent pins
 Catch2 and Google Benchmark to exact commits. `scripts/setup_external.sh`
-checks out exact ECF and RPG revisions; `verify_external.py` additionally
+checks out exact ECF and RPG revisions; `validate_outputs.py` additionally
 checks the RPG source-file SHA-256.
 
 The raw recordings and nested external checkouts are not stored in this Git

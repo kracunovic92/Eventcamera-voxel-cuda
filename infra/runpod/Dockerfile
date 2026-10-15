@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ninja-build \
     openssh-server \
     python3 \
+    python3-numpy \
     && rm -rf /var/lib/apt/lists/*
 
 RUN sed -i 's/^#*PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config \

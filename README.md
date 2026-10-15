@@ -11,7 +11,7 @@ The proposed study measures how event memory layout, atomic contention, and
 processing overhead affect CUDA voxelization latency. Whole recordings, bounded
 event selections, and future fixed-duration windows are supported as distinct
 workloads. The exact real-time use case remains a research choice; no GPU speedup
-or real-time claim is made by this CPU-only repository state. See
+or real-time claim is made before measured RunPod results. See
 [research design](docs/research-design.md).
 
 ## Reproduce the CPU pipeline
@@ -53,6 +53,20 @@ The generated metadata records all parameters and the binary hash.
 
 ## Benchmarks
 
+The two similarly named code areas have different jobs:
+
+| Location | Purpose |
+|---|---|
+| `apps/run_cpu.cpp`, `apps/run_cuda.cpp` | Run one case, save its voxel grid and a diagnostic JSON record. |
+| `benchmarks/bench_cpu.cpp`, `benchmarks/bench_cuda.cpp` | Measure repeated voxelization calls in C++. |
+| [`scripts/experiments/`](scripts/experiments/README.md) | Run the local or RunPod pipeline, capture saved grids, check them against RPG, and summarize measurements. |
+| `scripts/runpod/` | Prepare the pod and execute the complete remote workflow. |
+
+For CUDA, the timed C++ call synchronizes the GPU and returns the output to
+host memory. The reported latency is the full host-observed call, including
+GPU work and transfers; kernel-only GPU timing is not yet implemented. See
+[benchmarking protocol](docs/benchmarking.md) for the exact timing boundary.
+
 ```bash
 make benchmark-smoke DATASET=sparklers BENCH_BINS=2,5,10
 make benchmark-checked DATASET=sparklers BENCH_BINS=2,5,10
@@ -74,6 +88,7 @@ independent-run series. See [benchmarking protocol](docs/benchmarking.md).
 - [Datasets and sampling](docs/datasets.md)
 - [Numerical verification](docs/validation.md)
 - [Reproduction and artifact layout](docs/reproducibility.md)
+- [Python script map and pipeline stages](docs/python-scripts.md)
 - [Research design](docs/research-design.md)
 
 ## CUDA build and RunPod preparation
@@ -94,9 +109,15 @@ container. The committed RunPod matrices require the prepared real recordings;
 they are packaged separately from Git. See [the RunPod runbook](docs/runpod.md)
 for dataset transfer, image, execution, result transfer, and validation steps.
 
+Run `make pipeline-local SMOKE=1` on the local machine to prepare a small,
+externally verified dataset archive. Transfer that archive to the pod and run
+`make pipeline-runpod SMOKE=1` there. Remove `SMOKE=1` for full runs after the
+smoke workflow succeeds. See [the experiment script map](scripts/experiments/README.md).
+
 `event_voxel_run_cpu` and `event_voxel_run_cuda` save individual voxel grids and
 JSON run records. The CUDA app requires `--strategy event-scatter`,
 `--strategy pixel-gather`, or `--strategy sort-reduce`. The RunPod driver captures
 all configured CPU and CUDA grids under `data/outputs/` in its session archive,
-then compares them with `scripts/benchmark/compare_outputs.py`. Repeated
+then compares each grid directly with the pinned RPG and float64 references using
+`scripts/experiments/validate_outputs.py capture`. Repeated
 performance measurements remain in the separate benchmark executables.

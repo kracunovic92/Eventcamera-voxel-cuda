@@ -61,6 +61,8 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--executable", type=Path,
                         default=ROOT / "build/cpu-benchmark-release/event_voxel_bench_cpu")
+    parser.add_argument("--output-root", type=Path,
+                        default=ROOT / "results/benchmarks")
     parser.add_argument("--allow-dirty", action="store_true")
     parser.add_argument("--validate-only", action="store_true")
     args = parser.parse_args()
@@ -104,7 +106,7 @@ def main():
                 sys.executable, str(RUNNER),
                 "--input", str(prepared / "events.bin"),
                 "--executable", str(executable),
-                "--output-dir", str(ROOT / "results/benchmarks" / dataset / window),
+                "--output-dir", str(args.output_root / dataset / window),
                 "--bins", ",".join(map(str, case["bins"])),
                 "--filter", config["filter"],
                 "--min-time", config["min_time"],

@@ -74,23 +74,22 @@ def validation_reports(directory: Path, bins: list[int], input_sha: str,
                        cpu_executable_sha: str) -> dict:
     reports = {}
     for bin_count in bins:
-        case = {}
-        output_sha = None
-        for kind, path in (("external", directory / f"bins_{bin_count}.json"),
-                           ("precision", directory / f"bins_{bin_count}.precision.json")):
-            report = json.loads(path.read_text())
-            if (not report["result"]["passed"] or
-                report["recording"]["sha256"] != input_sha or
-                report["cpu_output"]["shape"][0] != bin_count or
-                not report.get("cpu_executable") or
-                report["cpu_executable"]["sha256"] != cpu_executable_sha):
-                raise ValueError(f"Validation does not match benchmark case: {path}")
-            current_sha = report["cpu_output"]["sha256"]
-            if output_sha is not None and output_sha != current_sha:
-                raise ValueError(f"Validation outputs differ for bin count {bin_count}")
-            output_sha = current_sha
-            case[kind] = {"path": str(path.resolve()), "sha256": sha256(path)}
-        reports[str(bin_count)] = case
+        path = directory / f"bins_{bin_count}.validation.json"
+        report = json.loads(path.read_text())
+        references = report.get("references", {})
+        if (report.get("schema_version") != 2 or not report.get("passed") or
+            report.get("backend") != "cpu" or report.get("strategy") != "reference" or
+            set(references) != {"rpg", "precision"} or
+            any(not entry["result"]["passed"] for entry in references.values()) or
+            report["recording"]["sha256"] != input_sha or
+            report["output"]["shape"][0] != bin_count or
+            not report["output"]["sha256"] or
+            not report.get("executable") or
+            report["executable"]["sha256"] != cpu_executable_sha):
+            raise ValueError(f"Validation does not match benchmark case: {path}")
+        reports[str(bin_count)] = {"combined": {
+            "path": str(path.resolve()), "sha256": sha256(path),
+        }}
     return reports
 
 
@@ -110,7 +109,7 @@ def main() -> None:
     parser.add_argument("--matrix-run-index", type=int)
     parser.add_argument("--matrix-order-index", type=int)
     parser.add_argument("--validation-dir", type=Path,
-                        help="Require passing external and precision validation for every bin count")
+                        help="Require a passing combined RPG and precision report for every bin count")
     args = parser.parse_args()
 
     if args.repetitions < 1:
@@ -152,9 +151,8 @@ def main() -> None:
     if validations:
         (run_dir / "validation").mkdir()
         for bin_count, case in validations.items():
-            for kind, record in case.items():
-                suffix = ".precision.json" if kind == "precision" else ".json"
-                copy = run_dir / "validation" / f"bins_{bin_count}{suffix}"
+            for record in case.values():
+                copy = run_dir / "validation" / f"bins_{bin_count}.validation.json"
                 shutil.copy2(record["path"], copy)
                 record["path"] = str(copy.relative_to(run_dir))
 

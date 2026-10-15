@@ -11,7 +11,7 @@ from `EVENT_VOXEL_BENCH_BINS` or `BENCH_BINS` through Make.
 
 `make benchmark-checked` verifies all measured bin counts, then starts a
 benchmark process. A run folder contains `benchmark.json`, `benchmark.log`,
-`manifest.json`, and copies of external and float64 validation reports. The
+`manifest.json`, and a copy of the combined RPG and float64 validation report. The
 manifest records source state and file hashes, input and output parameters,
 build flags, system information, and the exact command. Clean source is required for a formal run;
 use `BENCH_ALLOW_DIRTY=1` only for exploratory work.
@@ -36,7 +36,28 @@ and measurement settings; it excludes dirty exploratory runs unless
 `--include-dirty` is specified. The preliminary 2026-10-02 CPU JSON predates
 this protocol.
 
-## Future GPU measurements
+## Current CUDA measurement
+
+`event_voxel_bench_cuda` loads and selects events before timing. It warms up the
+selected CUDA strategy, then times repeated calls to
+`CudaVoxelizer::voxelize()` with `std::chrono::steady_clock`. The call allocates
+device buffers, copies the events to the device, clears the output, runs the
+strategy, synchronizes, copies the grid back, and releases device buffers. A
+host clock is appropriate for this complete, host-observed call because the
+call cannot return before GPU work and the output copy finish. Its CSV field is
+`end_to_end_ms`; it does not measure kernel-only device execution.
+
+`scripts/experiments/run_matrix.py` reads the CUDA JSON matrix, verifies input
+hashes, calls the C++ executable for each case, and retains every measurement
+with hardware and source metadata. `summarize_results.py` derives descriptive
+statistics from that CSV. The `run_cpu` and `run_cuda` apps separately save
+voxel arrays. `validate_outputs.py capture` compares each saved output directly
+with the pinned RPG implementation and the float64 oracle before performance
+measurements begin. The
+apps' `voxelize_ms` fields use a host clock around one call and are diagnostic
+rather than the repeated performance measurements used for summaries.
+
+## Planned GPU measurements
 
 Record each boundary separately:
 

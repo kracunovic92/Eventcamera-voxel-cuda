@@ -1,6 +1,4 @@
-
-#!/usr/bin/env python3
-"""Compare our C++ voxelizer with RPG E2Depth's NumPy implementation.
+"""Independent RPG and float64 reference models for saved voxel outputs.
 
 The published RPG function is loaded from a separate Git checkout.
 Only two compatibility adaptations are applied:
@@ -11,10 +9,8 @@ Only two compatibility adaptations are applied:
 RPG's interpolation and accumulation operations remain unchanged.
 """
 
-import argparse
 import ast
 import hashlib
-import json
 import subprocess
 from pathlib import Path
 
@@ -53,6 +49,15 @@ def sha256(path: Path) -> str:
             digest.update(chunk)
 
     return digest.hexdigest()
+
+
+def verify_rpg_source(repository: Path) -> Path:
+    source = repository / "utils" / "event_tensor_utils.py"
+    if sha256(source) != EXPECTED_RPG_SHA256:
+        raise ValueError("RPG source SHA-256 does not match the pinned source")
+    if git_revision(repository) != EXPECTED_RPG_REVISION or source_is_modified(repository, source):
+        raise ValueError("RPG checkout is not the clean pinned revision")
+    return source
 
 
 def git_revision(repository: Path) -> str | None:
@@ -146,8 +151,6 @@ def load_events(path: Path):
         "start_us": start,
         "end_us": end,
     }
-
-
 class ReferenceAdapter(ast.NodeTransformer):
     """Apply narrowly scoped changes to RPG's published function."""
 
@@ -332,6 +335,27 @@ def calculate_external_reference(
     return reference
 
 
+def float64_reference_grid(events, metadata, bins):
+    """Accumulate triangular weights independently in float64."""
+    duration = metadata["end_us"] - metadata["start_us"]
+    if duration > 2**53:
+        raise ValueError("Duration exceeds exact float64 integer precision")
+    shape = (bins, metadata["height"], metadata["width"])
+    reference = np.zeros(shape, dtype=np.float64)
+    for offset in range(0, len(events), 1_000_000):
+        chunk = events[offset:offset + 1_000_000]
+        relative = (chunk["t"] - metadata["start_us"]).astype(np.float64)
+        position = (bins - 1) * relative / duration
+        sign = np.where(chunk["p"] == 1, 1.0, -1.0)
+        for bin_index in range(bins):
+            weight = np.maximum(0.0, 1.0 - np.abs(bin_index - position))
+            active = weight > 0
+            np.add.at(reference[bin_index],
+                      (chunk["y"][active], chunk["x"][active]),
+                      sign[active] * weight[active])
+    return reference
+
+
 def compare(
     actual: np.ndarray,
     reference: np.ndarray,
@@ -341,10 +365,10 @@ def compare(
     """Evaluate numerical agreement at every voxel."""
 
     if actual.shape != reference.shape:
-        raise ValueError("CPU and reference tensor shapes disagree")
+        raise ValueError("Voxel output and reference tensor shapes disagree")
 
     if not np.isfinite(actual).all():
-        raise ValueError("CPU output contains NaN or infinity")
+        raise ValueError("Voxel output contains NaN or infinity")
 
     # Use float64 for the error calculation itself.
     error = np.abs(
@@ -379,7 +403,7 @@ def compare(
             "bin": int(worst[0]),
             "y": int(worst[1]),
             "x": int(worst[2]),
-            "cpu_value": float(actual[worst]),
+            "actual_value": float(actual[worst]),
             "reference_value": float(reference[worst]),
         },
         "tolerances": {
@@ -387,202 +411,3 @@ def compare(
             "relative": rtol,
         },
     }
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Verify CPU voxelization using RPG E2Depth"
-    )
-
-    parser.add_argument(
-        "--events",
-        type=Path,
-        required=True,
-    )
-
-    parser.add_argument(
-        "--voxels",
-        type=Path,
-        required=True,
-    )
-
-    parser.add_argument(
-        "--rpg-repo",
-        type=Path,
-        default=Path("external/rpg_e2depth"),
-    )
-
-    parser.add_argument(
-        "--report",
-        type=Path,
-        required=True,
-    )
-    parser.add_argument(
-        "--cpu-executable",
-        type=Path,
-        help="Executable that produced the supplied NumPy voxel file",
-    )
-
-    parser.add_argument(
-        "--expected-rpg-sha256",
-        type=str,
-        default=EXPECTED_RPG_SHA256,
-        help="Required RPG source SHA-256 (defaults to the pinned revision)",
-    )
-    parser.add_argument(
-        "--expected-rpg-revision",
-        default=EXPECTED_RPG_REVISION,
-        help="Required RPG Git revision",
-    )
-
-    parser.add_argument(
-        "--atol",
-        type=float,
-        default=1e-3,
-    )
-
-    parser.add_argument(
-        "--rtol",
-        type=float,
-        default=1e-4,
-    )
-
-    args = parser.parse_args()
-
-    if (
-        not np.isfinite(args.atol)
-        or not np.isfinite(args.rtol)
-        or args.atol < 0
-        or args.rtol < 0
-    ):
-        parser.error("Tolerances must be finite and nonnegative")
-
-    source = (
-        args.rpg_repo
-        / "utils"
-        / "event_tensor_utils.py"
-    )
-
-    if not source.is_file():
-        parser.error(f"RPG source not found: {source}")
-
-    source_hash = sha256(source)
-
-    if source_hash != args.expected_rpg_sha256.lower():
-        parser.error("RPG source SHA-256 does not match")
-    revision = git_revision(args.rpg_repo.resolve())
-    if revision != args.expected_rpg_revision:
-        parser.error("RPG Git revision does not match")
-    if source_is_modified(args.rpg_repo.resolve(), source.resolve()):
-        parser.error("RPG source has local modifications")
-
-    events, metadata = load_events(args.events)
-
-    actual = np.load(
-        args.voxels,
-        allow_pickle=False,
-    )
-
-    if actual.ndim != 3:
-        raise ValueError("CPU output must be a 3D tensor")
-
-    if actual.dtype != np.dtype("float32"):
-        raise ValueError("CPU output must contain float32 values")
-
-    bins, height, width = actual.shape
-
-    if bins < 2:
-        raise ValueError("At least two temporal bins are required")
-
-    if (
-        width != metadata["width"]
-        or height != metadata["height"]
-    ):
-        raise ValueError("CPU output and recording geometry disagree")
-
-    reference_function, adaptations = load_rpg_function(
-        source,
-        metadata["end_us"] - metadata["start_us"],
-    )
-
-    reference = calculate_external_reference(
-        events,
-        metadata,
-        bins,
-        reference_function,
-    )
-
-    metrics = compare(
-        actual,
-        reference,
-        args.atol,
-        args.rtol,
-    )
-
-    report = {
-        "result": metrics,
-        "recording": {
-            **metadata,
-            "path": str(args.events.resolve()),
-            "sha256": sha256(args.events),
-        },
-        "cpu_output": {
-            "path": str(args.voxels.resolve()),
-            "sha256": sha256(args.voxels),
-            "shape": list(actual.shape),
-        },
-        "cpu_executable": (
-            {
-                "path": str(args.cpu_executable.resolve()),
-                "sha256": sha256(args.cpu_executable),
-            }
-            if args.cpu_executable is not None
-            else None
-        ),
-        "external_reference": {
-            "repository": (
-                "https://github.com/uzh-rpg/rpg_e2depth"
-            ),
-            "git_revision": revision,
-            "source_sha256": source_hash,
-            "source_modified": source_is_modified(
-                args.rpg_repo.resolve(),
-                source.resolve(),
-            ),
-            "adaptations": adaptations,
-            "numpy_version": np.__version__,
-        },
-    }
-
-    args.report.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    args.report.write_text(
-        json.dumps(report, indent=2) + "\n",
-        encoding="utf-8",
-    )
-
-    print(f"Events: {metadata['event_count']:,}")
-    print(f"Voxel shape: {actual.shape}")
-    print(f"RPG revision: {report['external_reference']['git_revision']}")
-    print(f"Maximum error: {metrics['max_absolute_error']:.9g}")
-    print(f"Mean error: {metrics['mean_absolute_error']:.9g}")
-    print(f"RMSE: {metrics['rmse']:.9g}")
-    print(
-        f"Failed voxels: "
-        f"{metrics['failed_voxels']:,} / "
-        f"{metrics['voxel_count']:,}"
-    )
-    print(f"Result: {'PASS' if metrics['passed'] else 'FAIL'}")
-    print(f"Report: {args.report}")
-
-    if not metrics["passed"]:
-        print(f"Worst voxel: {metrics['worst_voxel']}")
-
-    return 0 if metrics["passed"] else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

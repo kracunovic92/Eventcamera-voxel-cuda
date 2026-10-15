@@ -2,11 +2,14 @@
 
 ## Scope
 
-The first GPU session validates the CUDA build, strategy correctness, smoke
-matrix, and raw result capture. The current benchmark reports host end-to-end
-latency for the cold `CudaVoxelizer::voxelize()` API. It includes allocation,
+The first GPU session validates the CUDA build, strategy correctness against
+the pinned RPG implementation, smoke matrix, and raw result capture. The
+current benchmark reports host end-to-end latency for each
+`CudaVoxelizer::voxelize()` call. It includes allocation,
 host-to-device transfer, computation, device-to-host transfer, and cleanup.
-CUDA phase timing and GPU-resident or buffer-reuse modes are future work.
+The call synchronizes before returning, so a host clock includes completed GPU
+work. It does not report kernel-only GPU time. CUDA phase timing and
+GPU-resident or buffer-reuse modes are future work.
 
 The committed smoke and full matrices use prepared real-camera recordings.
 Each input path and SHA-256 hash is fixed in the configs. The benchmark loads
@@ -16,34 +19,39 @@ same selected events. Raw HDF5 recordings stay on the local machine.
 
 ## Transfer the real-data inputs
 
-The prepared binaries are ignored by Git. Package the eight exact inputs
-named by the two configs on the local machine:
+The prepared binaries are ignored by Git. The local experiment pipeline
+prepares them, validates the CPU outputs with the external RPG implementation,
+and produces a transferable archive:
 
 ```bash
-python3 scripts/benchmark/package_datasets.py \
-  --config configs/cuda_benchmark_smoke.json \
-  --config configs/cuda_benchmark_matrix.json \
-  --output data/exports/runpod-real-data.tar.gz
+make setup
+make setup-ecf
+make pipeline-local SMOKE=1
 ```
 
-The packager verifies every binary against its committed hash and its
+The smoke run prints its session directory and a `datasets.tar.gz` path. For
+the full input archive, run `make pipeline-local` after committing the source.
+The packager verifies every binary against its committed hash and
 `metadata.json`, then prints the archive hash. Keep the original HDF5 files
-and this archive in local storage. Transfer the archive to the pod using the
+and the archive in local storage. Transfer the archive to the pod using the
 pod's SSH address and port, for example:
 
 ```bash
-scp -i <private-key> -P <ssh-port> data/exports/runpod-real-data.tar.gz \
+scp -i <private-key> -P <ssh-port> <local-session>/datasets.tar.gz \
   root@<pod-host>:/workspace/event-voxel-real-data.tar.gz
 ```
 
 Alternatively, put the archive at an HTTPS URL accessible from the pod. Set
 `EVENT_VOXEL_DATA_URL` to that URL. The run script downloads the archive,
 extracts it outside Git, and verifies every binary hash before building or
-benchmarking. A persistent network volume can hold the extracted dataset root
-for later pods; `EVENT_VOXEL_DATA_ROOT` changes its location.
+benchmarking. `SMOKE=1` accepts the smaller smoke archive; a full run needs the
+full archive. The preparation script can add the remaining verified datasets
+to the same pod directory when you later supply that full archive. A persistent
+network volume can hold the extracted dataset root for later pods;
+`EVENT_VOXEL_DATA_ROOT` changes its location.
 
 ```bash
-EVENT_VOXEL_DATA_URL='<private-https-url>' ./scripts/runpod/run_all.sh --smoke-only
+EVENT_VOXEL_DATA_URL='<private-https-url>' make pipeline-runpod SMOKE=1
 ```
 
 ## Prepare a known revision
@@ -51,9 +59,10 @@ EVENT_VOXEL_DATA_URL='<private-https-url>' ./scripts/runpod/run_all.sh --smoke-o
 Build and publish `infra/runpod/Dockerfile` to a registry accessible to your
 RunPod account, using the repository root as Docker build context. The image
 uses `nvidia/cuda:12.8.1-devel-ubuntu24.04` and installs CMake, Ninja, a C++
-compiler, Python 3, Git, certificates, and OpenSSH. Add your public SSH key to
-your RunPod account and expose TCP port 22 when creating the pod. The startup
-script receives `PUBLIC_KEY`, starts SSH, and enables SCP transfer.
+compiler, Python 3 with NumPy, Git, certificates, and OpenSSH. Add your public
+SSH key to your RunPod account and expose TCP port 22 when creating the pod. The startup
+script receives `PUBLIC_KEY`, starts SSH, and enables SCP transfer. The pipeline
+checks out the pinned RPG source on the pod.
 For example, on a machine with Docker access:
 
 ```bash
@@ -76,29 +85,30 @@ git clone <repository-url> event-voxel-cuda
 cd event-voxel-cuda
 git checkout <commit-sha>
 EVENT_VOXEL_DATA_ARCHIVE=/workspace/event-voxel-real-data.tar.gz \
-  ./scripts/runpod/run_all.sh --smoke-only
+  make pipeline-runpod SMOKE=1
 ```
 
-`run_all.sh` checks the environment, working tree, and dataset hashes, builds
-the Release CUDA preset, and runs CTest and the `[cuda]` suite. Before each
-benchmark matrix, `capture_real.py` runs `event_voxel_run_cpu` and
+`pipeline_runpod.sh` checks the environment, working tree, and dataset hashes,
+builds the Release CUDA preset, and runs CTest, including CUDA cases. Before
+each benchmark matrix, `capture_real.py` runs `event_voxel_run_cpu` and
 `event_voxel_run_cuda` for every dataset, event count, bin count, and CUDA
 strategy. Each app saves a complete float32 `.npy` grid and a JSON run record.
-`compare_outputs.py` reads those saved arrays, writes `comparisons.csv`, and
-stops the run if any GPU grid disagrees with the CPU grid. The independent
-`validate_outputs.py` command provides a pass/fail check from the saved arrays
-without running either voxelizer. The runner then measures the smoke and full
-matrices in that order. Use `--smoke-only` for the first pod validation; run
-without it for the full matrix after reviewing smoke output. Any failed step
+`validate_outputs.py capture` reads those arrays and computes the pinned RPG
+and independent float64 references from the same selected events. It writes
+`validation.csv` and stops the run if any CPU or GPU grid disagrees. The optional
+`validate_outputs.py compare-backends` command compares saved GPU arrays to saved CPU arrays
+without rerunning voxelization. The runner then measures the smoke and full
+matrices in that order. Use `SMOKE=1` for the first pod validation; run without
+it for the full matrix after reviewing smoke output. Any failed step
 stops the script. CUDA tests skip without a device during local compilation;
 the CUDA app fails if no device is usable.
-The extracted inputs stay at `/workspace/benchmark-datasets`, so a later full
-run can simply use `./scripts/runpod/run_all.sh` on the same pod.
+The extracted inputs stay at `/workspace/benchmark-datasets`; supply the full
+archive before a later `make pipeline-runpod` on the same pod.
 
 Each invocation creates a session directory under `EVENT_VOXEL_RESULT_ROOT`.
 It contains `data/outputs/smoke/` and `data/outputs/full/` with captured grids,
-run records, manifests, and comparison CSVs. The `smoke/` and `full/` benchmark
-directories contain the exact config, raw `measurements.csv`, `summary.csv`,
+run records, manifests, and validation CSVs. The `smoke/` and `full/`
+benchmark directories contain the exact config, raw `measurements.csv`, `summary.csv`,
 Git and host metadata, GPU query, environment output, and correctness output.
 The benchmark directory name includes UTC time, GPU name, commit prefix, and a
 random suffix. A failed matrix keeps its partial CSV and marks its metadata as
@@ -111,6 +121,9 @@ voxelization call, NumPy export time, process peak RSS, and GPU memory free
 before and after the call. GPU free memory snapshots are not peak allocation
 measurements. The separate benchmark CSV is the source for repeated latency
 statistics; NumPy export and file loading are outside its timed region.
+In app run records, `voxelize_ms` is one host-clock timing of the synchronous
+voxelization call. It is diagnostic, not a kernel-only or repeated benchmark
+measurement.
 
 ## Preserve results before ending the pod
 
@@ -126,13 +139,14 @@ tar -tzf <downloaded-archive> | head
 ```
 
 The project creates the archive but does not transfer it automatically.
-After extracting it locally, run
-`python3 scripts/benchmark/validate_outputs.py <session>/data/outputs/full/<capture-id>`
-for a pass/fail check or
-`python3 scripts/benchmark/compare_outputs.py <session>/data/outputs/full/<capture-id>`
-to regenerate the detailed CSV. These scripts use only the saved arrays and
-Python standard library; the absolute pod paths in the per-app run records are
-provenance and are not needed for comparison after transfer.
+After extracting it locally, inspect the archived `validation.csv`
+for direct RPG and float64 checks. You can also run
+`python3 scripts/experiments/validate_outputs.py compare-backends <session>/data/outputs/full/<capture-id>`
+to compare saved GPU and CPU arrays as a secondary diagnostic. That command
+uses only the saved arrays and Python standard library; the absolute pod paths
+in per-app run records are provenance and are not needed after transfer. To
+regenerate the validation, provide the extracted `events.bin` root, the
+pinned RPG checkout, and NumPy to `validate_outputs.py capture`.
 
 ## Local verification
 

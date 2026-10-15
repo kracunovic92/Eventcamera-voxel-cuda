@@ -15,7 +15,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[2]
 GENERATOR = ROOT / "tools/generate_synthetic.py"
 CPU = Path(os.environ.get("EVENT_VOXEL_RUN_CPU", ROOT / "build/local-debug/event_voxel_run_cpu"))
-PRECISION = ROOT / "tools/verify_precision.py"
+VALIDATOR = ROOT / "scripts/experiments/validate_outputs.py"
 
 
 def digest(path):
@@ -48,23 +48,25 @@ class SyntheticWorkloads(unittest.TestCase):
                     voxels = np.load(output, allow_pickle=False)
                     self.assertEqual(voxels.shape, (5, 6, 8))
                     self.assertTrue(np.isfinite(voxels).all())
-                    report = Path(temporary) / "precision.json"
+                    report = Path(temporary) / "validation.json"
                     subprocess.run([
-                        sys.executable, str(PRECISION), "--events", str(binary),
+                        sys.executable, str(VALIDATOR), "single", "--events", str(binary),
                         "--voxels", str(output), "--report", str(report),
-                        "--cpu-executable", str(CPU),
+                        "--executable", str(CPU), "--references", "precision",
                     ], check=True, capture_output=True, text=True)
-                    self.assertTrue(json.loads(report.read_text())["result"]["passed"])
+                    self.assertTrue(json.loads(report.read_text())["references"]["precision"]["result"]["passed"])
 
                     if spatial == "single_pixel":
                         voxels[0, 0, 0] += 1.0
                         np.save(output, voxels)
                         result = subprocess.run([
-                            sys.executable, str(PRECISION), "--events", str(binary),
+                            sys.executable, str(VALIDATOR), "single", "--events", str(binary),
                             "--voxels", str(output), "--report", str(report),
+                            "--references", "precision",
                         ], capture_output=True, text=True)
                         self.assertEqual(result.returncode, 1)
-                        self.assertGreater(json.loads(report.read_text())["result"]["failed_voxels"], 0)
+                        self.assertGreater(
+                            json.loads(report.read_text())["references"]["precision"]["result"]["failed_voxels"], 0)
 
 
 if __name__ == "__main__":

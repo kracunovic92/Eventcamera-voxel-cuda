@@ -10,7 +10,7 @@ import numpy as np
 
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "scripts/benchmark"))
+sys.path.insert(0, str(ROOT / "scripts/experiments"))
 from output_comparison import analyze_run  # noqa: E402
 from run_matrix import sha256_file  # noqa: E402
 

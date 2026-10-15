@@ -10,7 +10,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "benchmark"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "experiments"))
 from run_matrix import require_config, sha256_file  # noqa: E402
 
 
@@ -34,6 +34,21 @@ def verify(root, selected):
         if json.loads(metadata.read_text())["binary_sha256"] != expected_hash:
             raise ValueError(f"metadata hash mismatch: {relative}")
     print(f"Verified {len(selected)} real datasets in {root}")
+
+
+def verify_present(root, selected):
+    """Reject changed files before extending an existing smoke dataset root."""
+    for relative, expected_hash in selected.items():
+        events = root / relative
+        metadata = events.with_name("metadata.json")
+        if not events.exists() and not metadata.exists():
+            continue
+        if (not events.is_file() or not metadata.is_file() or
+                not events.resolve().is_relative_to(root.resolve()) or
+                not metadata.resolve().is_relative_to(root.resolve()) or
+                sha256_file(events) != expected_hash or
+                json.loads(metadata.read_text())["binary_sha256"] != expected_hash):
+            raise ValueError(f"existing dataset differs from config: {relative}")
 
 
 def unpack(archive_path, target, selected):
@@ -69,8 +84,12 @@ def main():
     args = parser.parse_args()
     selected = required_files(args.config)
     if args.destination.exists():
-        verify(args.destination, selected)
-        return
+        verify_present(args.destination, selected)
+        try:
+            verify(args.destination, selected)
+            return
+        except FileNotFoundError:
+            pass
     if args.archive is None and args.url is None:
         raise ValueError("dataset root is missing; provide --archive or --url")
     if args.url is not None and not args.url.startswith("https://"):
@@ -88,7 +107,20 @@ def main():
                     output.write(block)
         unpack(archive_path, staging, selected)
         verify(staging, selected)
-        os.replace(staging, args.destination)
+        if args.destination.exists():
+            for relative in selected:
+                events = args.destination / relative
+                if events.exists():
+                    continue
+                if not events.parent.resolve().is_relative_to(args.destination.resolve()):
+                    raise ValueError(f"dataset path leaves destination: {relative}")
+                events.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(staging / relative, events)
+                os.replace(staging / Path(relative).with_name("metadata.json"),
+                           events.with_name("metadata.json"))
+        else:
+            os.replace(staging, args.destination)
+    verify(args.destination, selected)
     print(f"Ready: {args.destination}")
 
 

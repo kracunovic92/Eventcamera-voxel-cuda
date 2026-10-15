@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Save CPU and CUDA voxel arrays for every case in a real-data matrix."""
+"""Save CPU and, when requested, CUDA voxel arrays for every matrix case."""
 
 import argparse
 import json
@@ -21,14 +21,14 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--dataset-root", type=Path, required=True)
     parser.add_argument("--cpu-executable", type=Path, required=True)
-    parser.add_argument("--cuda-executable", type=Path, required=True)
+    parser.add_argument("--cuda-executable", type=Path)
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--run-path-file", type=Path)
     args = parser.parse_args()
     config = require_config(args.config)
     dataset_root = args.dataset_root.resolve(strict=True)
     cpu = args.cpu_executable.resolve(strict=True)
-    cuda = args.cuda_executable.resolve(strict=True)
+    cuda = args.cuda_executable.resolve(strict=True) if args.cuda_executable else None
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + uuid.uuid4().hex[:8]
     run_dir = args.output_root / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
@@ -40,9 +40,10 @@ def main():
         "run_id": run_id,
         "config_sha256": sha256_file(args.config),
         "git_revision": git("rev-parse", "HEAD"),
-        "git_status": git("status", "--porcelain", "--untracked-files=normal"),
+        "git_status": git("status", "--porcelain", "--untracked-files=normal", "--",
+                          ".", ":(exclude)results/**"),
         "cpu_executable_sha256": sha256_file(cpu),
-        "cuda_executable_sha256": sha256_file(cuda),
+        "cuda_executable_sha256": sha256_file(cuda) if cuda else None,
         "cases": [],
     }
     (run_dir / "config.json").write_text(args.config.read_text())
@@ -88,11 +89,12 @@ def main():
                     }
                     manifest["cases"].append(case)
                     save()
-                    for strategy in config["strategies"]:
-                        case["gpu"][strategy] = run(
-                            cuda, [str(events), str(bins), "--strategy", strategy],
-                            case_dir, strategy, "cuda", strategy, count, bins)
-                        save()
+                    if cuda is not None:
+                        for strategy in config["strategies"]:
+                            case["gpu"][strategy] = run(
+                                cuda, [str(events), str(bins), "--strategy", strategy],
+                                case_dir, strategy, "cuda", strategy, count, bins)
+                            save()
                     print(f"Captured {dataset['id']}: {count} events, {bins} bins", flush=True)
         manifest["status"] = "complete"
         save()

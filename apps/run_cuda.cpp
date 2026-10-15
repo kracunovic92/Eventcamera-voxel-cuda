@@ -98,6 +98,8 @@ int main(int argc, char** argv) {
         check_cuda(cudaMemGetInfo(&free_before, &total_bytes), "cudaMemGetInfo before run");
         const event_voxel::VoxelizationSpec specification{.bins = bins};
         const event_voxel::cuda::CudaVoxelizer voxelizer{strategy};
+        // voxelize() synchronizes the device and returns a host-resident grid.
+        // This CPU clock measures the complete call, not kernel-only GPU time.
         const auto voxelize_start = Clock::now();
         const auto grid = voxelizer.voxelize(batch, specification);
         const auto voxelize_end = Clock::now();

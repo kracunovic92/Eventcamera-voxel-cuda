@@ -13,6 +13,7 @@ nvcc --version
 cmake --version
 ninja --version
 python3 --version
+python3 -c 'import numpy; print("NumPy", numpy.__version__)'
 git --version
 c++ --version
 git rev-parse HEAD
