@@ -27,6 +27,9 @@ SDK fails with CMake's package diagnostic. The adapter is isolated in
 `src/data/metavision/`. No Python converter or `.bin` is used by the new path.
 This checkout has no installed SDK, so the adapter still needs a build and a
 real-recording integration run on an SDK host.
+The current [RunPod image](../infra/runpod/Dockerfile) supports the older
+prepared `.bin` pipeline; add OpenEB SDK Stream and its ECF codec to a
+versioned image before running this direct HDF5 path on a pod.
 
 Run an HDF5 CPU experiment:
 

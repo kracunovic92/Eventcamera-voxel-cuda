@@ -44,6 +44,11 @@ CMakeUserPresets.json
 /results/visualizations/
 /results/cuda/
 /results/experiments/
+/results/benchmarks/
+/results/metadata/
+/results/reports/
+/results/validation/
+/results/downloads/
 /results/run-*/
 /results/profiles/
 

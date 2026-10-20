@@ -9,8 +9,8 @@ Catch2 and Google Benchmark to exact commits. `scripts/setup_external.sh`
 checks out exact ECF and RPG revisions; `validate_outputs.py` additionally
 checks the RPG source-file SHA-256.
 
-The raw recordings and nested external checkouts are not stored in this Git
-repository. The dataset catalog and inspection reports give their names and
+The raw recordings, generated reports, and nested external checkouts are not
+stored in this Git repository. Regenerate inspection reports to check source
 SHA-256 fingerprints. A different raw fingerprint defines a different dataset
 revision and must get a new inspection report.
 GitHub Actions runs CPU Debug, Release, and sanitizer tests plus the synthetic
@@ -33,21 +33,23 @@ make verify-all
 For one experiment, prepare a named full recording or selected window, verify
 the chosen bins, and run `make benchmark-checked`. Each benchmark invocation
 gets a unique UTC timestamp and random run ID. The runner refuses a dirty Git
-tree by default. Commit the source and small reports before formal thesis runs.
+tree by default. Commit the source before formal runs, and copy result archives
+to durable storage before ending a pod.
 
 ## Artifact contract
 
 - `data/raw/`: untouched original HDF5 files, outside Git.
 - `data/processed/`: versioned little-endian `EVXEVT01` binary batches plus
   selection and binary-hash metadata, outside Git.
-- `results/metadata/`: source validation reports, retained.
-- `results/validation/`: external and independent float64 voxel comparisons,
-  retained.
-- `results/benchmarks/`: raw measurements, manifest, log, and validation copies,
-  retained or archived immutably.
-- `results/reports/`: summaries across independent processes, retained.
-- `results/voxels/` and `results/visualizations/`: regenerable arrays and figures,
-  outside Git unless a figure is selected for publication.
+- `results/metadata/`: generated source inspection reports.
+- `results/validation/`: generated external and independent float64 comparisons.
+- `results/benchmarks/`: generated raw measurements, manifests, logs, and
+  validation copies.
+- `results/reports/`: generated summaries across independent processes.
+- `results/voxels/`: regenerable arrays.
+
+All result folders are ignored by Git. Preserve selected run archives and their
+SHA-256 files locally or on another storage service.
 
 The binary header is 40 bytes: eight-byte magic, little-endian `uint32`
 width/height, `uint64` event count, and `int64` start/end timestamps. Each

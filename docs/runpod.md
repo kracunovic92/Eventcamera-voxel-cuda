@@ -1,5 +1,8 @@
 # RunPod CUDA benchmark runbook
 
+This runbook covers the older prepared `.bin` benchmark matrix. The newer
+fixed-duration path is described in [streaming experiments](streaming-experiments.md).
+
 ## Scope
 
 The first GPU session validates the CUDA build, strategy correctness against
@@ -8,8 +11,8 @@ current benchmark reports host end-to-end latency for each
 `CudaVoxelizer::voxelize()` call. It includes allocation,
 host-to-device transfer, computation, device-to-host transfer, and cleanup.
 The call synchronizes before returning, so a host clock includes completed GPU
-work. It does not report kernel-only GPU time. CUDA phase timing and
-GPU-resident or buffer-reuse modes are future work.
+work. It does not report kernel-only GPU time. The newer streaming experiment
+separates CUDA stages and reuses buffers.
 
 The committed smoke and full matrices use prepared real-camera recordings.
 Each input path and SHA-256 hash is fixed in the configs. The benchmark loads
@@ -74,6 +77,16 @@ enough storage for the image, build tree, and results. Put the checkout at
 `/workspace/event-voxel-cuda` and retain results at
 `/workspace/experiment-results` (or set `EVENT_VOXEL_RESULT_ROOT`).
 
+The [RunPod CLI](https://docs.runpod.io/runpodctl/reference/runpodctl-remove-pods)
+can create a Pod from the published image with a chosen GPU, SSH access, and a
+volume. A network volume is useful when reusing prepared datasets across pods;
+keep result archives in independent local or cloud storage as well. For the
+fixed-duration HDF5 experiment, the current Dockerfile needs an OpenEB SDK
+Stream and ECF installation added before enabling the HDF5 preset. Follow
+[Prophesee's Ubuntu package instructions](https://docs.prophesee.ai/stable/installation/linux_openeb_with_packages.html)
+in a separately versioned image, then run the HDF5 integration test on that
+image before benchmarking.
+
 Commit and push the desired source revision before creating the pod. In the
 pod, clone the repository and check out that exact commit. The runner rejects
 a dirty checkout for official runs. The pod needs network access to fetch the
@@ -129,16 +142,30 @@ measurement.
 
 After the script succeeds, it prints the path and SHA-256 of a result archive
 under `/workspace`. Transfer that archive to local storage, verify its hash,
-and inspect the CSV files. Only then terminate the paid pod. For example:
+and inspect the CSV files. The local helper fetches the archive over SSH,
+checks SHA-256 against the pod copy, and writes a `.sha256` sidecar:
 
 ```bash
-scp -i <private-key> -P <ssh-port> \
-  root@<pod-host>:<printed-archive-path> ./
-sha256sum <downloaded-archive>
-tar -tzf <downloaded-archive> | head
+scripts/runpod/fetch_results.sh <pod-host> <ssh-port> <private-key> \
+  <printed-archive-path>
 ```
 
-The project creates the archive but does not transfer it automatically.
+The default local destination is ignored `results/downloads/`. Pass another
+directory as the fifth argument. To also copy the verified archive and checksum
+to a personal Drive, configure an [rclone Google Drive remote](https://rclone.org/drive/)
+on the local machine and pass its directory as the sixth argument:
+
+```bash
+scripts/runpod/fetch_results.sh <pod-host> <ssh-port> <private-key> \
+  <printed-archive-path> results/downloads mydrive:event-voxel-results
+```
+
+Credentials stay on the local machine. The copy uses `rclone copyto`, which
+does not delete existing remote files. A [RunPod network volume](https://docs.runpod.io/pods/troubleshooting/zero-gpus)
+can keep `/workspace` data available across pod replacements, but a local or
+Drive copy remains the durable research archive. Download and verify it before
+terminating the pod.
+
 After extracting it locally, inspect the archived `validation.csv`
 for direct RPG and float64 checks. You can also run
 `python3 scripts/experiments/validate_outputs.py compare-backends <session>/data/outputs/full/<capture-id>`

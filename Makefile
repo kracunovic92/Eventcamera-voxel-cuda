@@ -31,7 +31,6 @@ VOXEL_DIR ?= results/voxels/$(DATASET)/$(WINDOW_ID)
 VOXEL_OUTPUT ?= $(VOXEL_DIR)/bins_$(BINS).npy
 VALIDATION_DIR ?= results/validation/$(DATASET)/$(WINDOW_ID)
 VALIDATION_REPORT ?= $(VALIDATION_DIR)/bins_$(BINS).validation.json
-VISUAL_OUTPUT ?= results/visualizations/$(DATASET)/$(WINDOW_ID)/bins_$(BINS).png
 RPG_REPO ?= external/rpg_e2depth
 
 BENCH_BINS ?= 2,5,10
@@ -64,7 +63,7 @@ SYNTH_POSITIVE_PROBABILITY ?= 0.5
 
 .PHONY: help setup setup-external setup-ecf configure build test test-release test-python all
 .PHONY: format format-check lint data-inspect data-inspect-all data-prepare synthetic-prepare
-.PHONY: cpu-run visualize verify verify-release verify-all verify-coverage validation-summary
+.PHONY: cpu-run verify verify-release verify-all verify-coverage validation-summary
 .PHONY: benchmark-build benchmark-smoke benchmark benchmark-checked benchmark-summary benchmark-matrix
 .PHONY: pipeline-local pipeline-runpod
 
@@ -158,10 +157,6 @@ synthetic-prepare:
 
 cpu-run: build
 	$(BUILD_DIR)/event_voxel_run_cpu "$(PREPARED_DATA)" "$(BINS)" "$(VOXEL_OUTPUT)"
-
-visualize: cpu-run
-	$(PYTHON) tools/visualize_voxels.py "$(VOXEL_OUTPUT)" \
-		--output "$(VISUAL_OUTPUT)"
 
 verify: cpu-run
 	$(PYTHON) scripts/experiments/validate_outputs.py single --events "$(PREPARED_DATA)" \

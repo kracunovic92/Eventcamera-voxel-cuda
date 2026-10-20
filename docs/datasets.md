@@ -3,20 +3,20 @@
 All seven files in `data/raw/` passed the chunked HDF5 inspection at the
 current source fingerprints. Inspection checks geometry, field types,
 coordinates, polarities, nonnegative timestamps, and timestamp order.
-The first 100,000 events from each source are also checked against RPG and an
+The first 100,000 events from each source were also checked against RPG and an
 independent float64 oracle for 2, 5, and 10 bins. This sample validation does
-not cover every event in the full recordings. Each source fingerprint is in its
-linked inspection report.
+not cover every event in the full recordings. Run `make data-inspect-all` to
+regenerate source fingerprints in `results/metadata/`.
 
-| Recording | Resolution | Events | Timestamp range (µs) | Inspection |
-|---|---:|---:|---:|---|
-| 80_balls | 640×480 | 4,588,809 | 54–6,284,062 | [report](../results/metadata/80_balls.metadata.json) |
-| driving_sample | 1280×720 | 111,484,516 | 4,096–12,500,991 | [report](../results/metadata/driving_sample.metadata.json) |
-| eye_tracking | 1280×720 | 56,844,143 | 0–9,893,387 | [report](../results/metadata/eye_tracking.metadata.json) |
-| hand_spinner | 640×480 | 11,965,597 | 16–4,999,999 | [report](../results/metadata/hand_spinner.metadata.json) |
-| sparklers | 640×480 | 521,252 | 0–95,871 | [report](../results/metadata/sparklers.metadata.json) |
-| spinner | 640×480 | 54,165,303 | 0–5,002,329 | [report](../results/metadata/spinner.metadata.json) |
-| traffic_monitoring | 640×480 | 17,939,153 | 48–27,999,870 | [report](../results/metadata/traffic_monitoring.metadata.json) |
+| Recording | Resolution | Events | Timestamp range (µs) |
+|---|---:|---:|---:|
+| 80_balls | 640×480 | 4,588,809 | 54–6,284,062 |
+| driving_sample | 1280×720 | 111,484,516 | 4,096–12,500,991 |
+| eye_tracking | 1280×720 | 56,844,143 | 0–9,893,387 |
+| hand_spinner | 640×480 | 11,965,597 | 16–4,999,999 |
+| sparklers | 640×480 | 521,252 | 0–95,871 |
+| spinner | 640×480 | 54,165,303 | 0–5,002,329 |
+| traffic_monitoring | 640×480 | 17,939,153 | 48–27,999,870 |
 
 The full `driving_sample` recording alone requires about 2.68 GB for the
 current 24-byte in-memory C++ `Event` objects, before output and other copies.

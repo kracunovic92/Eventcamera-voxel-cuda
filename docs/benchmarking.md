@@ -37,8 +37,7 @@ load. `make benchmark-summary` reports the median of each process's repetition
 medians and does not pool individual Google Benchmark iterations across
 processes. The summary groups exact source snapshots, executables, datasets,
 and measurement settings; it excludes dirty exploratory runs unless
-`--include-dirty` is specified. The preliminary 2026-10-02 CPU JSON predates
-this protocol.
+`--include-dirty` is specified.
 
 ## Current CUDA measurement
 
@@ -61,20 +60,5 @@ measurements begin. The
 apps' `voxelize_ms` fields use a host clock around one call and are diagnostic
 rather than the repeated performance measurements used for summaries.
 
-## Planned GPU measurements
-
-Record each boundary separately:
-
-| Name | Included work |
-|---|---|
-| GPU computation | Output clear plus voxelization kernel, device-resident input |
-| GPU kernel | Kernel alone with a correctly reset output outside timing |
-| GPU-resident pipeline | Host-to-device input plus GPU computation, output remains on GPU |
-| Host end-to-end | Allocation policy, transfers, clear, kernel, output copy, synchronization |
-
-Use CUDA events on the same stream for device execution and a synchronized
-host timer for complete host-observed latency. Record warmup, repetitions,
-device and driver versions, clocks/power state, event layout, block size, and
-numerical error. A future fixed-duration-window experiment should compare
-processing latency with its declared window budget. GPU speedups are not yet
-reported.
+The current fixed-duration experiment records separate CUDA stages and pipeline
+scenarios as described in [streaming experiments](streaming-experiments.md).

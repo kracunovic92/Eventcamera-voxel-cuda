@@ -91,8 +91,8 @@ records the source state. Each invocation gets a unique folder containing raw
 Google Benchmark JSON, a manifest, a log, and copies of validation reports.
 The editable [benchmark matrix](configs/benchmark_matrix.json) covers all seven
 recordings using their prepared first 100,000 events.
-The older standalone CPU JSON in `results/benchmarks/` is preliminary and has no
-independent-run series. See [benchmarking protocol](docs/benchmarking.md).
+See the [benchmarking protocol](docs/benchmarking.md) for the required
+independent-run series and validation gate. Generated results stay outside Git.
 
 ## Project documentation
 

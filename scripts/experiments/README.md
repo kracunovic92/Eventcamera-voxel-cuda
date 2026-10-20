@@ -26,8 +26,7 @@ CUDA records repeated synchronous end-to-end calls.
 | `pipeline_local.sh` | Execute the local CPU experiment sequence. | A local session under `results/experiments/local/` |
 | `pipeline_runpod.sh` | Execute the RunPod CUDA experiment sequence. | A pod session and downloadable archive |
 
-`scripts/runpod/run_all.sh` remains as a compatibility entry point for the
-RunPod pipeline. The optional `validate_outputs.py compare-backends` compares
+The optional `validate_outputs.py compare-backends` compares
 our two backends; `validate_outputs.py capture` is the correctness gate. See [the RunPod runbook](../../docs/runpod.md)
 for the command sequence and data transfer instructions.
 

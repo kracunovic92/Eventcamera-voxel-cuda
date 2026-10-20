@@ -23,7 +23,6 @@ RunPod: dataset archive → prepared events.bin → CPU and CUDA grids → RPG a
 | `run_benchmark.py` | Runs one Google Benchmark CPU process and saves its JSON, log, and provenance manifest. | Keeps each CPU timing run reproducible. |
 | `run_benchmark_matrix.py` | Schedules independent CPU benchmark processes from a JSON config. | Measures multiple recordings and rounds without manually launching every case. |
 | `summarize_benchmarks.py` | Verifies CPU run artifacts and summarizes medians across independent processes. | Produces the CPU performance report without pooling unrelated iterations. |
-| `visualize_voxels.py` | Renders saved voxel grids as images. | Optional visual inspection; it is not part of the correctness or timing gate. |
 
 ## `scripts/experiments/`: shared capture and RunPod measurements
 

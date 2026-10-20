@@ -31,9 +31,9 @@ error distributions matter more than bitwise equality.
 recording for 2, 5, and 10 bins by default. `validate_outputs.py single` writes
 one `bins_N.validation.json` report containing both references for each
 recording, window, and bin count. `make benchmark-checked` repeats both checks
-for every bin count it is about to measure. The summary in
-`results/reports/validation_first_100000.json` ties these reports to all raw
-source fingerprints and prepared binary hashes.
+for every bin count it is about to measure. The generated summary at
+`results/reports/validation_first_100000.json` ties these reports
+to all raw source fingerprints and prepared binary hashes.
 `make verify-coverage` additionally checks middle and last 100,000-event
 selections from each recording, using source event indices to avoid treating an
 early prefix as representative of the whole file. Each position gets its own
@@ -41,13 +41,10 @@ summary. Full-recording voxel validation remains a separate, memory-intensive
 experiment.
 
 Both comparisons currently use absolute tolerance `1e-3` and relative tolerance
-`1e-4` per voxel. The relative term is important for highly contended voxels:
-on a one-million-event single-pixel case, the observed CPU difference from the
-float64 oracle was about 0.0053 at its worst voxel
-([report](../results/validation/synthetic/single_pixel_1m/bins_5.precision.json)).
+`1e-4` per voxel. The relative term matters for highly contended voxels, so
+include single-pixel collision workloads in numerical validation.
 `validate_outputs.py capture` applies the same two references to every saved CPU
-and CUDA grid in a RunPod session, writing `validation.csv`. The linked synthetic
-report above predates the combined report format. Before accepting CUDA results,
+and CUDA grid in a RunPod session, writing `validation.csv`. Before accepting CUDA results,
 characterize error on collision workloads and record failed voxel count,
 maximum absolute error, mean absolute error, RMSE, and the worst voxel.
 
