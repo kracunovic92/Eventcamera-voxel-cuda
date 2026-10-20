@@ -5,6 +5,8 @@
 #include <cuda_runtime.h>
 
 #include <cstddef>
+#include <limits>
+#include <stdexcept>
 #include <utility>
 
 namespace event_voxel::cuda::shared {
@@ -13,12 +15,23 @@ template <typename T> class DeviceBuffer {
   public:
     DeviceBuffer() = default;
 
-    DeviceBuffer(std::size_t count, const char* allocation_name) : count_(count) {
-        if (count_ == 0) {
-            return;
-        }
+    DeviceBuffer(std::size_t count, const char* allocation_name) {
+        reserve(count, allocation_name);
+    }
 
-        check_cuda(cudaMalloc(reinterpret_cast<void**>(&data_), bytes()), allocation_name);
+    void reserve(std::size_t count, const char* allocation_name) {
+        if (count <= count_)
+            return;
+        if (count > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
+            throw std::overflow_error("Device allocation byte count overflow");
+        }
+        T* replacement = nullptr;
+        check_cuda(cudaMalloc(reinterpret_cast<void**>(&replacement), count * sizeof(T)),
+                   allocation_name);
+        if (data_ != nullptr)
+            cudaFree(data_);
+        data_ = replacement;
+        count_ = count;
     }
 
     ~DeviceBuffer() {
@@ -66,7 +79,10 @@ template <typename T> class DeviceBuffer {
     }
 
     [[nodiscard]]
-    std::size_t bytes() const noexcept {
+    std::size_t bytes() const {
+        if (count_ > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
+            throw std::overflow_error("Device allocation byte count overflow");
+        }
         return count_ * sizeof(T);
     }
 

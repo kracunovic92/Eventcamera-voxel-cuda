@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
+#include <stdexcept>
 
 namespace event_voxel {
 
@@ -10,13 +12,24 @@ struct VoxelGridSpec {
     std::size_t bins;
 
     [[nodiscard]]
-    constexpr std::size_t element_count() const noexcept {
+    constexpr std::size_t element_count() const {
+        if (height != 0 && width > std::numeric_limits<std::size_t>::max() / height) {
+            throw std::overflow_error("Grid pixel count overflow");
+        }
+        const auto pixels = width * height;
+        if (bins != 0 && pixels > std::numeric_limits<std::size_t>::max() / bins) {
+            throw std::overflow_error("Grid element count overflow");
+        }
         return width * height * bins;
     }
 
     [[nodiscard]]
-    constexpr std::size_t memory_bytes() const noexcept {
-        return element_count() * sizeof(float);
+    constexpr std::size_t memory_bytes() const {
+        const auto elements = element_count();
+        if (elements > std::numeric_limits<std::size_t>::max() / sizeof(float)) {
+            throw std::overflow_error("Grid byte count overflow");
+        }
+        return elements * sizeof(float);
     }
 };
 

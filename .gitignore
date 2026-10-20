@@ -44,6 +44,8 @@ CMakeUserPresets.json
 /results/visualizations/
 /results/cuda/
 /results/experiments/
+/results/run-*/
+/results/profiles/
 
 # ----------------------------
 # Python

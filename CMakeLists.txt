@@ -29,6 +29,8 @@ option(
     OFF
 )
 
+option(EVENT_VOXEL_ENABLE_METAVISION "Build direct Metavision C++ HDF5 adapter" OFF)
+
 # --------------------------------------------------
 # Common library
 # --------------------------------------------------
@@ -39,6 +41,7 @@ add_library(
     src/data/binary_event_loader.cpp
     src/data/sample_event_batch.cpp
     src/data/synthetic_generator.cpp
+    src/data/event_window_source.cpp
     src/io/npy_writer.cpp
 )
 
@@ -68,6 +71,23 @@ target_link_libraries(
     PUBLIC
         event_voxel_common
 )
+
+if(EVENT_VOXEL_ENABLE_METAVISION)
+    find_package(MetavisionSDK COMPONENTS stream QUIET)
+    if(NOT TARGET MetavisionSDK::stream)
+        message(FATAL_ERROR
+            "Direct HDF5 was requested but Metavision SDK Stream was not found. "
+            "Install Metavision SDK/OpenEB with the HDF5 ECF codec, then set "
+            "MetavisionSDK_DIR to its generated CMake package directory. "
+            "See docs/streaming-experiments.md.")
+    endif()
+    add_library(event_voxel_metavision src/data/metavision/hdf5_reader.cpp)
+    target_include_directories(event_voxel_metavision PUBLIC ${PROJECT_SOURCE_DIR}/include)
+    target_link_libraries(event_voxel_metavision PUBLIC event_voxel_common PRIVATE MetavisionSDK::stream)
+    message(STATUS "Direct Metavision HDF5 reader enabled")
+else()
+    message(STATUS "Direct HDF5 reader disabled; enable EVENT_VOXEL_ENABLE_METAVISION with Metavision SDK Stream installed")
+endif()
 
 # --------------------------------------------------
 # Compiler warnings
@@ -118,6 +138,21 @@ target_link_libraries(
     PRIVATE
         event_voxel_cpu
 )
+
+add_executable(event_voxel_experiment apps/experiment.cpp)
+target_link_libraries(event_voxel_experiment PRIVATE event_voxel_cpu)
+execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+                OUTPUT_VARIABLE EVENT_VOXEL_GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+target_compile_definitions(event_voxel_experiment PRIVATE
+    EVENT_VOXEL_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
+    EVENT_VOXEL_GIT_COMMIT="${EVENT_VOXEL_GIT_COMMIT}")
+if(TARGET event_voxel_metavision)
+    target_link_libraries(event_voxel_experiment PRIVATE event_voxel_metavision)
+    target_compile_definitions(event_voxel_experiment PRIVATE EVENT_VOXEL_HAS_METAVISION)
+    target_compile_definitions(event_voxel_experiment PRIVATE
+        EVENT_VOXEL_METAVISION_VERSION="${MetavisionSDK_VERSION}")
+endif()
 
 # --------------------------------------------------
 # CPU benchmarks
@@ -184,6 +219,7 @@ if(EVENT_VOXEL_ENABLE_CUDA)
     add_library(
         event_voxel_cuda
         src/cuda/voxelizer.cu
+        src/cuda/execution_session.cu
         src/cuda/event_scatter.cu
         src/cuda/pixel_gather.cu
         src/cuda/sort_reduce.cu
@@ -202,6 +238,23 @@ if(EVENT_VOXEL_ENABLE_CUDA)
         PRIVATE
             CUDA::cudart
     )
+
+    # NVTX3 is header-only; locations vary between CUDA distributions.
+    file(GLOB _nvtx_candidates "${CUDAToolkit_ROOT}/nsight-compute*/host/target-linux-x64/nvtx/include")
+    find_path(EVENT_VOXEL_NVTX_INCLUDE_DIR nvtx3/nvtx3.hpp
+              HINTS ${_nvtx_candidates} ${CUDAToolkit_INCLUDE_DIRS})
+    if(EVENT_VOXEL_NVTX_INCLUDE_DIR)
+        target_include_directories(event_voxel_cuda PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
+        target_compile_definitions(event_voxel_cuda PRIVATE EVENT_VOXEL_NVTX)
+        target_include_directories(event_voxel_experiment PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
+        target_compile_definitions(event_voxel_experiment PRIVATE EVENT_VOXEL_NVTX)
+        if(TARGET event_voxel_metavision)
+            target_include_directories(event_voxel_metavision PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
+            target_compile_definitions(event_voxel_metavision PRIVATE EVENT_VOXEL_NVTX)
+        endif()
+    else()
+        message(STATUS "NVTX3 headers not found; profiling markers disabled")
+    endif()
 
     set_target_properties(
         event_voxel_cuda
@@ -226,6 +279,11 @@ if(EVENT_VOXEL_ENABLE_CUDA)
             event_voxel_cuda
             CUDA::cudart
     )
+
+    target_link_libraries(event_voxel_experiment PRIVATE event_voxel_cuda)
+    target_compile_definitions(event_voxel_experiment PRIVATE EVENT_VOXEL_HAS_CUDA)
+    target_compile_definitions(event_voxel_experiment PRIVATE
+        EVENT_VOXEL_CUDA_TOOLKIT_VERSION="${CUDAToolkit_VERSION}")
 
     if(EVENT_VOXEL_BUILD_BENCHMARKS)
         add_executable(event_voxel_bench_cuda benchmarks/bench_cuda.cpp)

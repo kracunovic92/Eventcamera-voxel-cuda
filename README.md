@@ -7,9 +7,16 @@ into a `float32` tensor in `[bins, height, width]` order.
 
 ## Research direction
 
+For new fixed-time, bounded HDF5 experiments use the
+[streaming experiment guide](docs/streaming-experiments.md). The `event_voxel_experiment`
+CLI reads `.hdf5` directly through an optional Metavision C++ adapter and
+records separate CPU, CUDA strategy, transfer and ready-window timings. The
+workflow below is retained for historical whole-batch comparisons.
+The [project map](docs/architecture.md) shows how the new and historical paths connect.
+
 The proposed study measures how event memory layout, atomic contention, and
 processing overhead affect CUDA voxelization latency. Whole recordings, bounded
-event selections, and future fixed-duration windows are supported as distinct
+event selections, and fixed-duration windows are supported as distinct
 workloads. The exact real-time use case remains a research choice; no GPU speedup
 or real-time claim is made before measured RunPod results. See
 [research design](docs/research-design.md).
@@ -52,6 +59,10 @@ Controlled workloads can be generated with, for example,
 The generated metadata records all parameters and the binary hash.
 
 ## Benchmarks
+
+The following are legacy whole-batch experiments. For the current streaming
+measurement boundaries and artifact schema, see the
+[streaming experiment guide](docs/streaming-experiments.md).
 
 The two similarly named code areas have different jobs:
 

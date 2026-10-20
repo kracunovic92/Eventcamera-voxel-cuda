@@ -5,12 +5,12 @@
 #include <cuda_runtime.h>
 
 #include <cstddef>
+#include <limits>
+#include <stdexcept>
 
 namespace event_voxel::cuda::shared {
 
 namespace {
-
-constexpr unsigned int THREADS_PER_BLOCK = 256;
 
 __global__ void event_scatter_kernel(const Event* __restrict__ events, float* __restrict__ voxels,
                                      shared::VoxelizationParams params) {
@@ -47,11 +47,16 @@ __global__ void event_scatter_kernel(const Event* __restrict__ events, float* __
 } // namespace
 
 void run_event_scatter(const Event* device_events, float* device_voxels,
-                       const shared::VoxelizationParams& params) {
+                       const shared::VoxelizationParams& params, cudaStream_t stream,
+                       unsigned int block_size) {
+    if (params.event_count == 0)
+        return;
     const std::size_t block_count =
-        (params.event_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+        params.event_count / block_size + (params.event_count % block_size != 0);
+    if (block_count > std::numeric_limits<unsigned int>::max())
+        throw std::overflow_error("EventScatter CUDA grid dimension overflow");
 
-    event_scatter_kernel<<<static_cast<unsigned int>(block_count), THREADS_PER_BLOCK>>>(
+    event_scatter_kernel<<<static_cast<unsigned int>(block_count), block_size, 0, stream>>>(
         device_events, device_voxels, params);
 
     shared::check_cuda(cudaGetLastError(), "event_scatter_kernel launch");

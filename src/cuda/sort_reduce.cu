@@ -23,8 +23,6 @@ namespace {
 
 using VoxelKey = std::uint64_t;
 
-constexpr unsigned int THREADS_PER_BLOCK = 256;
-
 __global__ void generate_contributions_kernel(const Event* events, VoxelKey* keys, float* values,
                                               shared::VoxelizationParams params) {
     const std::size_t event_index = static_cast<std::size_t>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -91,55 +89,65 @@ __global__ void scatter_reduced_kernel(const VoxelKey* keys, const float* values
 
 } // namespace
 
-void run_sort_reduce(const Event* device_events, float* device_voxels,
-                     const shared::VoxelizationParams& params) {
+void prepare_sort_reduce(const Event* device_events, const shared::VoxelizationParams& params,
+                         SortReduceWorkspace& workspace, cudaStream_t stream,
+                         unsigned int block_size) {
     if (params.event_count > std::numeric_limits<std::size_t>::max() / 2) {
 
         throw std::overflow_error("Contribution count overflow");
     }
 
     const std::size_t contribution_count = params.event_count * 2;
-
-    shared::DeviceBuffer<VoxelKey> keys{contribution_count, "cudaMalloc(contribution keys)"};
-
-    shared::DeviceBuffer<float> values{contribution_count, "cudaMalloc(contribution values)"};
+    if (contribution_count == 0) {
+        workspace.reduced_count = 0;
+        return;
+    }
 
     const std::size_t event_blocks =
-        (params.event_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+        params.event_count / block_size + (params.event_count % block_size != 0);
+    if (event_blocks > std::numeric_limits<unsigned int>::max())
+        throw std::overflow_error("SortReduce event CUDA grid dimension overflow");
 
-    generate_contributions_kernel<<<static_cast<unsigned int>(event_blocks), THREADS_PER_BLOCK>>>(
-        device_events, keys.data(), values.data(), params);
+    generate_contributions_kernel<<<static_cast<unsigned int>(event_blocks), block_size, 0,
+                                    stream>>>(device_events, workspace.keys.data(),
+                                              workspace.values.data(), params);
 
     shared::check_cuda(cudaGetLastError(), "generate_contributions_kernel launch");
 
-    auto keys_begin = thrust::device_pointer_cast(keys.data());
+    auto keys_begin = thrust::device_pointer_cast(workspace.keys.data());
 
-    auto values_begin = thrust::device_pointer_cast(values.data());
+    auto values_begin = thrust::device_pointer_cast(workspace.values.data());
 
-    thrust::sort_by_key(thrust::device, keys_begin, keys_begin + contribution_count, values_begin);
+    thrust::sort_by_key(thrust::cuda::par.on(stream), keys_begin, keys_begin + contribution_count,
+                        values_begin);
 
-    shared::DeviceBuffer<VoxelKey> reduced_keys{contribution_count, "cudaMalloc(reduced keys)"};
+    auto reduced_keys_begin = thrust::device_pointer_cast(workspace.reduced_keys.data());
 
-    shared::DeviceBuffer<float> reduced_values{contribution_count, "cudaMalloc(reduced values)"};
+    auto reduced_values_begin = thrust::device_pointer_cast(workspace.reduced_values.data());
 
-    auto reduced_keys_begin = thrust::device_pointer_cast(reduced_keys.data());
+    const auto reduced_end = thrust::reduce_by_key(
+        thrust::cuda::par.on(stream), keys_begin, keys_begin + contribution_count, values_begin,
+        reduced_keys_begin, reduced_values_begin, thrust::equal_to<VoxelKey>{},
+        thrust::plus<float>{});
 
-    auto reduced_values_begin = thrust::device_pointer_cast(reduced_values.data());
+    workspace.reduced_count = static_cast<std::size_t>(reduced_end.first - reduced_keys_begin);
+}
 
-    const auto reduced_end =
-        thrust::reduce_by_key(thrust::device, keys_begin, keys_begin + contribution_count,
-                              values_begin, reduced_keys_begin, reduced_values_begin,
-                              thrust::equal_to<VoxelKey>{}, thrust::plus<float>{});
+void finish_sort_reduce(float* device_voxels, const shared::VoxelizationParams& params,
+                        SortReduceWorkspace& workspace, cudaStream_t stream,
+                        unsigned int block_size) {
+    const auto reduced_count = workspace.reduced_count;
 
-    const std::size_t reduced_count =
-        static_cast<std::size_t>(reduced_end.first - reduced_keys_begin);
-
-    const std::size_t reduced_blocks = (reduced_count + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    const std::size_t reduced_blocks =
+        reduced_count / block_size + (reduced_count % block_size != 0);
+    if (reduced_blocks > std::numeric_limits<unsigned int>::max())
+        throw std::overflow_error("SortReduce reduced CUDA grid dimension overflow");
 
     if (reduced_count != 0) {
-        scatter_reduced_kernel<<<static_cast<unsigned int>(reduced_blocks), THREADS_PER_BLOCK>>>(
-            reduced_keys.data(), reduced_values.data(), reduced_count, device_voxels,
-            params.voxel_count);
+        scatter_reduced_kernel<<<static_cast<unsigned int>(reduced_blocks), block_size, 0,
+                                 stream>>>(workspace.reduced_keys.data(),
+                                           workspace.reduced_values.data(), reduced_count,
+                                           device_voxels, params.voxel_count);
 
         shared::check_cuda(cudaGetLastError(), "scatter_reduced_kernel launch");
     }

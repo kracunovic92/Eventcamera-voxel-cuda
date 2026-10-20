@@ -1,5 +1,9 @@
 # Benchmarking protocol
 
+For the fixed-duration HDF5 and ready-window benchmark path, use the
+[streaming experiment protocol](streaming-experiments.md). The remainder of
+this document describes the preserved legacy `.bin` workflows.
+
 ## Current CPU measurement
 
 `event_voxel_bench_cpu` loads a prepared binary before timing. Every timed

@@ -1,5 +1,10 @@
 # Results
 
+New streaming experiment runs use ignored `results/run-*/` folders with
+versioned `metadata.json`, `windows.csv`, `samples.csv`, `crossovers.csv`, and
+`summary.json`. See [the streaming guide](../docs/streaming-experiments.md).
+The folders below describe preserved legacy research outputs.
+
 - `metadata/`: source inspection reports for all recordings; keep these in Git.
 - `validation/`: RPG and independent float64 comparison reports; keep these in Git.
 - `benchmarks/<dataset>/<window>/<run-id>/`: raw benchmark JSON, manifest,

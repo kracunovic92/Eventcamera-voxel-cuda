@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v nsys >/dev/null 2>&1; then
+    echo "nsys is unavailable; install Nsight Systems on the GPU host." >&2
+    exit 2
+fi
+if (( $# < 2 )); then
+    echo "Usage: $0 <output-prefix> <recording.hdf5> [experiment options]" >&2
+    exit 2
+fi
+profile_prefix=$1
+recording=$2
+shift 2
+nsys profile --trace=cuda,nvtx,osrt --sample=none --output="${profile_prefix}" \
+    ./build/cuda-profile/event_voxel_experiment --source hdf5 --input "${recording}" \
+    --mode profile --scenario gpu-device --max-windows 1 "$@"

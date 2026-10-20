@@ -95,6 +95,41 @@
 
         "CMAKE_CUDA_ARCHITECTURES": "native"
       }
+    },
+    {
+      "name": "cuda-hdf5-release",
+      "displayName": "CUDA Release with direct HDF5",
+      "inherits": "cuda-release",
+      "binaryDir": "${sourceDir}/build/cuda-hdf5-release",
+      "cacheVariables": {
+        "EVENT_VOXEL_ENABLE_METAVISION": true
+      }
+    },
+    {
+      "name": "hdf5-cpu-release",
+      "displayName": "CPU Release with direct HDF5",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/hdf5-cpu-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EVENT_VOXEL_ENABLE_CUDA": false,
+        "EVENT_VOXEL_ENABLE_METAVISION": true,
+        "BUILD_TESTING": true
+      }
+    },
+    {
+      "name": "cuda-profile",
+      "displayName": "GPU profiling build",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cuda-profile",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "EVENT_VOXEL_ENABLE_CUDA": true,
+        "EVENT_VOXEL_ENABLE_METAVISION": true,
+        "BUILD_TESTING": true,
+        "CMAKE_CUDA_ARCHITECTURES": "native",
+        "CMAKE_CUDA_FLAGS_RELWITHDEBINFO": "-O2 -g -lineinfo"
+      }
     }
   ],
 
@@ -127,6 +162,18 @@
     {
       "name": "cuda-release",
       "configurePreset": "cuda-release"
+    },
+    {
+      "name": "hdf5-cpu-release",
+      "configurePreset": "hdf5-cpu-release"
+    },
+    {
+      "name": "cuda-hdf5-release",
+      "configurePreset": "cuda-hdf5-release"
+    },
+    {
+      "name": "cuda-profile",
+      "configurePreset": "cuda-profile"
     }
   ],
 

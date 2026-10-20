@@ -56,3 +56,10 @@ endif()
 include(Catch)
 
 catch_discover_tests(event_voxel_tests)
+
+if(TARGET event_voxel_metavision AND EXISTS "${PROJECT_SOURCE_DIR}/data/raw/sparklers.hdf5")
+    add_executable(event_voxel_test_metavision integration/test_metavision_hdf5.cpp)
+    target_link_libraries(event_voxel_test_metavision PRIVATE event_voxel_metavision)
+    add_test(NAME metavision_hdf5_bounded_stream
+             COMMAND event_voxel_test_metavision "${PROJECT_SOURCE_DIR}/data/raw/sparklers.hdf5")
+endif()

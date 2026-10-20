@@ -25,7 +25,7 @@ struct TemporalContribution {
 // The caller supplies a validated event, configuration
 // and precomputed conversion factor.
 [[nodiscard]]
-TemporalContribution interpolate_timestamp(const Event& event, const EventBatch& batch,
+TemporalContribution interpolate_timestamp(const Event& event, const EventWindowView& batch,
                                            std::size_t last_bin, double time_scale) {
     const auto relative_time = event.timestamp_us - batch.start_us;
 
@@ -66,8 +66,18 @@ void accumulate_event(const Event& event, const TemporalContribution& contributi
 
 // Public entry point: coordinates the complete algorithm.
 VoxelGrid CpuReferenceVoxelizer::voxelize(const EventBatch& batch, const VoxelizationSpec& spec) {
+    return voxelize(view_of(batch), spec);
+}
 
-    event_voxel::validate_batch(batch, spec);
+VoxelGrid CpuReferenceVoxelizer::voxelize(const EventWindowView& batch,
+                                          const VoxelizationSpec& spec) {
+
+    event_voxel::validate_window(batch, spec);
+    return voxelize_prevalidated(batch, spec);
+}
+
+VoxelGrid CpuReferenceVoxelizer::voxelize_prevalidated(const EventWindowView& batch,
+                                                       const VoxelizationSpec& spec) {
 
     const VoxelGridSpec grid_spec{
         .width = batch.width,
