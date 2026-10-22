@@ -1,15 +1,11 @@
 # Results
 
-Generated results stay on the machine that produced them and are ignored by
-Git. Historical result files that were once tracked remain available in Git
-history; existing local copies are left in place during this cleanup.
+`event_voxel_experiment` creates a new ignored `run-*/` folder for each
+invocation. It contains `windows.csv`, `samples.csv`, `crossovers.csv`,
+`metadata.json`, and `summary.json`; export mode can also save selected `.npy`
+grids. These generated files are not tracked by Git.
 
-| Folder | Created by |
-|---|---|
-| `metadata/`, `validation/`, `reports/` | Dataset inspection, reference checks, and summary commands. |
-| `benchmarks/`, `experiments/` | Legacy CPU and RunPod benchmark pipelines. |
-| `run-*/` | Fixed-duration `event_voxel_experiment` runs. |
-| `downloads/` | Verified archives fetched from RunPod. |
-
-Keep the archive and its `.sha256` file before ending a RunPod pod. See the
-[RunPod runbook](../docs/runpod.md) for local download and optional Drive copy.
+Archive the run folder, its SHA-256, and the source recording hash before
+ending a temporary RunPod pod. The [RunPod guide](../docs/runpod.md) explains
+network-volume retrieval. Historical measurements remain in Git history; local
+copies of earlier results are not part of the current workflow.

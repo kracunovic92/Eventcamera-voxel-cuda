@@ -4,6 +4,7 @@
 
 /build/
 /build-*/
+/.deps/
 
 compile_commands.json
 
@@ -68,7 +69,8 @@ __pycache__/
 # ----------------------------
 
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
 *.swp
 *.swo
 

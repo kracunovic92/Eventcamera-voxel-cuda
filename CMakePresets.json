@@ -11,7 +11,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "EVENT_VOXEL_ENABLE_CUDA": false,
-        "EVENT_VOXEL_BUILD_BENCHMARKS": false,
         "BUILD_TESTING": true
       }
     },
@@ -25,25 +24,9 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "EVENT_VOXEL_ENABLE_CUDA": false,
-        "EVENT_VOXEL_BUILD_BENCHMARKS": false,
         "BUILD_TESTING": true
       }
     },
-
-    {
-      "name": "benchmark-release",
-      "displayName": "CPU Release Benchmarks",
-      "description": "Optimized CPU benchmark build",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/cpu-benchmark-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "EVENT_VOXEL_ENABLE_CUDA": false,
-        "EVENT_VOXEL_BUILD_BENCHMARKS": true,
-        "BUILD_TESTING": true
-      }
-    },
-
     {
       "name": "sanitizer-debug",
       "displayName": "CPU Sanitizer Debug",
@@ -53,7 +36,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "EVENT_VOXEL_ENABLE_CUDA": false,
-        "EVENT_VOXEL_BUILD_BENCHMARKS": false,
         "BUILD_TESTING": true,
         "CMAKE_CXX_FLAGS_DEBUG": "-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer",
         "CMAKE_EXE_LINKER_FLAGS": "-fsanitize=address,undefined"
@@ -69,13 +51,12 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "EVENT_VOXEL_ENABLE_CUDA": true,
-        "EVENT_VOXEL_BUILD_BENCHMARKS": true,
         "BUILD_TESTING": true,
 
-        "CMAKE_CUDA_COMPILER": "$env{CONDA_PREFIX}/bin/nvcc",
+        "CMAKE_CUDA_COMPILER": "$env{HOME}/miniconda3/envs/cuda-dev/bin/nvcc",
         "CMAKE_CUDA_HOST_COMPILER": "/usr/bin/g++-15",
         "CMAKE_CUDA_FLAGS": "-Xcompiler=-B/usr/bin",
-        "CUDAToolkit_ROOT": "$env{CONDA_PREFIX}",
+        "CUDAToolkit_ROOT": "$env{HOME}/miniconda3/envs/cuda-dev",
 
         "CMAKE_CUDA_ARCHITECTURES": "75"
       }
@@ -90,31 +71,9 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "EVENT_VOXEL_ENABLE_CUDA": true,
-        "EVENT_VOXEL_BUILD_BENCHMARKS": true,
         "BUILD_TESTING": true,
 
         "CMAKE_CUDA_ARCHITECTURES": "native"
-      }
-    },
-    {
-      "name": "cuda-hdf5-release",
-      "displayName": "CUDA Release with direct HDF5",
-      "inherits": "cuda-release",
-      "binaryDir": "${sourceDir}/build/cuda-hdf5-release",
-      "cacheVariables": {
-        "EVENT_VOXEL_ENABLE_METAVISION": true
-      }
-    },
-    {
-      "name": "hdf5-cpu-release",
-      "displayName": "CPU Release with direct HDF5",
-      "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/hdf5-cpu-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "EVENT_VOXEL_ENABLE_CUDA": false,
-        "EVENT_VOXEL_ENABLE_METAVISION": true,
-        "BUILD_TESTING": true
       }
     },
     {
@@ -125,7 +84,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "EVENT_VOXEL_ENABLE_CUDA": true,
-        "EVENT_VOXEL_ENABLE_METAVISION": true,
         "BUILD_TESTING": true,
         "CMAKE_CUDA_ARCHITECTURES": "native",
         "CMAKE_CUDA_FLAGS_RELWITHDEBINFO": "-O2 -g -lineinfo"
@@ -144,10 +102,6 @@
       "configurePreset": "local-release"
     },
 
-    {
-      "name": "benchmark-release",
-      "configurePreset": "benchmark-release"
-    },
 
     {
       "name": "sanitizer-debug",
@@ -162,14 +116,6 @@
     {
       "name": "cuda-release",
       "configurePreset": "cuda-release"
-    },
-    {
-      "name": "hdf5-cpu-release",
-      "configurePreset": "hdf5-cpu-release"
-    },
-    {
-      "name": "cuda-hdf5-release",
-      "configurePreset": "cuda-hdf5-release"
     },
     {
       "name": "cuda-profile",
@@ -194,13 +140,6 @@
       }
     },
 
-    {
-      "name": "benchmark-release",
-      "configurePreset": "benchmark-release",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
 
     {
       "name": "sanitizer-debug",
@@ -221,6 +160,13 @@
     {
       "name": "cuda-release",
       "configurePreset": "cuda-release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "cuda-profile",
+      "configurePreset": "cuda-profile",
       "output": {
         "outputOnFailure": true
       }

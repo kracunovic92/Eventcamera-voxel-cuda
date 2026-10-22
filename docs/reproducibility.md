@@ -1,57 +1,31 @@
-# Reproducing the CPU study
+# Reproducing an event-window experiment
 
-## Software and source
-
-The tested local Python environment is Python 3.13.2 with exact package
-versions in `requirements.txt`. `make setup` creates `.venv` and installs them.
-The CI pipeline also checks a clean install on Ubuntu. CMake FetchContent pins
-Catch2 and Google Benchmark to exact commits. `scripts/setup_external.sh`
-checks out exact ECF and RPG revisions; `validate_outputs.py` additionally
-checks the RPG source-file SHA-256.
-
-The raw recordings, generated reports, and nested external checkouts are not
-stored in this Git repository. Regenerate inspection reports to check source
-SHA-256 fingerprints. A different raw fingerprint defines a different dataset
-revision and must get a new inspection report.
-GitHub Actions runs CPU Debug, Release, and sanitizer tests plus the synthetic
-HDF5-to-NumPy pipeline. The raw-recording verification gate runs locally with
-`make verify-coverage`, because the raw recordings are outside Git and CI.
-
-## From source to a verified result
+Use a committed source revision and record the exact SHA-256 of each input HDF5
+file. Raw recordings and generated result folders are outside Git.
 
 ```bash
-make setup
-make setup-external
-make setup-ecf
-make all
-make test-release
-make test-python
-make data-inspect-all
-make verify-all
+git rev-parse HEAD
+sha256sum data/raw/sparklers.hdf5
+cmake --preset cuda-release \
+  -DMetavisionSDK_DIR=<SDK-cmake-directory> \
+  -DEVENT_VOXEL_HDF5_TEST_INPUT=data/raw/sparklers.hdf5
+cmake --build --preset cuda-release --parallel
+ctest --preset cuda-release --output-on-failure
+./build/cuda-release/event_voxel_experiment \
+  --input data/raw/sparklers.hdf5 --mode pipeline --scenario all \
+  --window-us 100000 --bins 5 --max-windows 100 --warmup 3 --repeat 10
 ```
 
-For one experiment, prepare a named full recording or selected window, verify
-the chosen bins, and run `make benchmark-checked`. Each benchmark invocation
-gets a unique UTC timestamp and random run ID. The runner refuses a dirty Git
-tree by default. Commit the source before formal runs, and copy result archives
-to durable storage before ending a pod.
+Each `results/run-*/` folder contains `metadata.json` with configuration,
+build and Git identity, source path, and available hardware details. Save the
+exact command too: some CLI limits, including `--max-windows`, are not recorded
+in metadata. `windows.csv`
+records the windows and input preparation time. `samples.csv` contains every
+timed sample. `summary.json` aggregates samples, and `crossovers.csv` compares
+CPU and GPU scenarios where both exist. Save the input hash and exact SDK,
+CUDA toolkit, compiler, template or image versions alongside that folder.
 
-## Artifact contract
-
-- `data/raw/`: untouched original HDF5 files, outside Git.
-- `data/processed/`: versioned little-endian `EVXEVT01` binary batches plus
-  selection and binary-hash metadata, outside Git.
-- `results/metadata/`: generated source inspection reports.
-- `results/validation/`: generated external and independent float64 comparisons.
-- `results/benchmarks/`: generated raw measurements, manifests, logs, and
-  validation copies.
-- `results/reports/`: generated summaries across independent processes.
-- `results/voxels/`: regenerable arrays.
-
-All result folders are ignored by Git. Preserve selected run archives and their
-SHA-256 files locally or on another storage service.
-
-The binary header is 40 bytes: eight-byte magic, little-endian `uint32`
-width/height, `uint64` event count, and `int64` start/end timestamps. Each
-event is 16 bytes: little-endian `uint16` x/y, `int16` polarity, two zero
-reserved bytes, and `int64` timestamp. The end timestamp is exclusive.
+For performance comparisons, use the same recording, time windows, bin count,
+GPU, build type, and scenario. Run correctness mode before reporting a new CUDA
+strategy, and archive the raw result folder before ending a temporary pod. See
+[streaming experiments](streaming-experiments.md) for what each timing includes.

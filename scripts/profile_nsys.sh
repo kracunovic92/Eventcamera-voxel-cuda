@@ -13,5 +13,5 @@ profile_prefix=$1
 recording=$2
 shift 2
 nsys profile --trace=cuda,nvtx,osrt --sample=none --output="${profile_prefix}" \
-    ./build/cuda-profile/event_voxel_experiment --source hdf5 --input "${recording}" \
+    ./build/cuda-profile/event_voxel_experiment --input "${recording}" \
     --mode profile --scenario gpu-device --max-windows 1 "$@"

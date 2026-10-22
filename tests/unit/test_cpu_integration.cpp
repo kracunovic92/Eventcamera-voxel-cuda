@@ -6,7 +6,6 @@
 #include <cstddef>
 
 #include "event_voxel/cpu/reference_voxelizer.hpp"
-#include "event_voxel/data/synthetic_generator.hpp"
 
 namespace {
 
@@ -34,19 +33,17 @@ double sum_event_polarities(const event_voxel::EventBatch& batch) {
 } // namespace
 
 TEST_CASE("CPU voxelization conserves signed contributions", "[cpu][integration]") {
-    event_voxel::GeneratorConfig config;
-
-    config.width = 128;
-    config.height = 128;
-    config.event_count = 10000;
-    config.seed = 42;
-
     const event_voxel::EventBatch batch{
-        .events = event_voxel::generate_events(config),
-        .width = config.width,
-        .height = config.height,
+        .events = {{0, 0, 0, 1},
+                   {1, 1, 20, 0},
+                   {2, 1, 40, 1},
+                   {0, 0, 60, 1},
+                   {1, 1, 80, 0},
+                   {2, 1, 99, 1}},
+        .width = 3,
+        .height = 2,
         .start_us = 0,
-        .end_us = config.duration_us,
+        .end_us = 100,
     };
 
     event_voxel::CpuReferenceVoxelizer voxelizer;

@@ -1,8 +1,9 @@
 #include "event_voxel/cpu/reference_voxelizer.hpp"
+#include "event_voxel/cuda/execution_session.hpp"
 #include "event_voxel/cuda/strategy.hpp"
-#include "event_voxel/cuda/voxelizer.hpp"
 #include "event_voxel/event.hpp"
 #include "event_voxel/event_batch.hpp"
+#include "event_voxel/event_window.hpp"
 #include "event_voxel/voxel_grid.hpp"
 #include "event_voxel/voxelization_spec.hpp"
 
@@ -25,7 +26,7 @@ using event_voxel::EventBatch;
 using event_voxel::VoxelGrid;
 using event_voxel::VoxelizationSpec;
 
-using event_voxel::cuda::CudaVoxelizer;
+using event_voxel::cuda::CudaExecutionSession;
 using event_voxel::cuda::Strategy;
 
 // --------------------------------------------------
@@ -131,9 +132,14 @@ void require_all_cuda_strategies_match(const EventBatch& batch, const Voxelizati
 
         INFO("Testing CUDA strategy: " << event_voxel::cuda::to_string(strategy));
 
-        const CudaVoxelizer gpu{strategy};
-
-        const VoxelGrid actual = gpu.voxelize(batch, spec);
+        const auto window = event_voxel::view_of(batch);
+        CudaExecutionSession gpu{strategy};
+        gpu.reserve(window.events.size(), window.width, window.height, spec.bins);
+        gpu.set_window(window, spec);
+        gpu.upload_events();
+        gpu.run_strategy();
+        VoxelGrid actual(expected.spec());
+        gpu.download_grid(actual.data());
 
         require_grids_close(expected, actual, strategy);
     }

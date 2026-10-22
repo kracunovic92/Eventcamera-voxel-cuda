@@ -17,6 +17,11 @@
 
 namespace event_voxel::cuda {
 
+bool is_available() noexcept {
+    int count = 0;
+    return cudaGetDeviceCount(&count) == cudaSuccess && count > 0;
+}
+
 GpuInfo gpu_info() {
     cudaDeviceProp properties{};
     shared::check_cuda(cudaGetDeviceProperties(&properties, 0), "cudaGetDeviceProperties");

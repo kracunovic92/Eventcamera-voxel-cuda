@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.30)
 
 project(
     event_voxel_cuda
@@ -23,13 +23,20 @@ option(
     OFF
 )
 
-option(
-    EVENT_VOXEL_BUILD_BENCHMARKS
-    "Build benchmark executables"
-    OFF
-)
+set(EVENT_VOXEL_HDF5_TEST_INPUT "${PROJECT_SOURCE_DIR}/data/raw/sparklers.hdf5"
+    CACHE FILEPATH "Real HDF5 recording for the optional streaming integration test")
 
-option(EVENT_VOXEL_ENABLE_METAVISION "Build direct Metavision C++ HDF5 adapter" OFF)
+# HDF5 recordings are the only experiment input, so every build needs Stream.
+if(EXISTS "${PROJECT_SOURCE_DIR}/.deps/openeb/share/cmake/MetavisionSDK/MetavisionSDKConfig.cmake")
+    set(EVENT_VOXEL_LOCAL_OPENEB TRUE)
+    list(PREPEND CMAKE_PREFIX_PATH
+        "${PROJECT_SOURCE_DIR}/.deps/openeb"
+        "${PROJECT_SOURCE_DIR}/.deps/openeb-build-env")
+endif()
+find_package(MetavisionSDK COMPONENTS stream REQUIRED)
+if(NOT TARGET MetavisionSDK::stream)
+    message(FATAL_ERROR "Metavision SDK Stream did not provide MetavisionSDK::stream")
+endif()
 
 # --------------------------------------------------
 # Common library
@@ -38,10 +45,6 @@ option(EVENT_VOXEL_ENABLE_METAVISION "Build direct Metavision C++ HDF5 adapter" 
 add_library(
     event_voxel_common
     src/common/validation.cpp
-    src/data/binary_event_loader.cpp
-    src/data/sample_event_batch.cpp
-    src/data/synthetic_generator.cpp
-    src/data/event_window_source.cpp
     src/io/npy_writer.cpp
 )
 
@@ -72,21 +75,13 @@ target_link_libraries(
         event_voxel_common
 )
 
-if(EVENT_VOXEL_ENABLE_METAVISION)
-    find_package(MetavisionSDK COMPONENTS stream QUIET)
-    if(NOT TARGET MetavisionSDK::stream)
-        message(FATAL_ERROR
-            "Direct HDF5 was requested but Metavision SDK Stream was not found. "
-            "Install Metavision SDK/OpenEB with the HDF5 ECF codec, then set "
-            "MetavisionSDK_DIR to its generated CMake package directory. "
-            "See docs/streaming-experiments.md.")
-    endif()
-    add_library(event_voxel_metavision src/data/metavision/hdf5_reader.cpp)
-    target_include_directories(event_voxel_metavision PUBLIC ${PROJECT_SOURCE_DIR}/include)
-    target_link_libraries(event_voxel_metavision PUBLIC event_voxel_common PRIVATE MetavisionSDK::stream)
-    message(STATUS "Direct Metavision HDF5 reader enabled")
-else()
-    message(STATUS "Direct HDF5 reader disabled; enable EVENT_VOXEL_ENABLE_METAVISION with Metavision SDK Stream installed")
+add_library(event_voxel_metavision src/data/metavision/hdf5_time_slice_source.cpp)
+target_include_directories(event_voxel_metavision PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(event_voxel_metavision PUBLIC event_voxel_common PRIVATE MetavisionSDK::stream)
+if(EVENT_VOXEL_LOCAL_OPENEB AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # System OpenCV and the local SDK use different HDF5/CURL builds.
+    target_link_options(event_voxel_metavision INTERFACE
+        "LINKER:-rpath-link,/usr/lib/${CMAKE_LIBRARY_ARCHITECTURE}")
 endif()
 
 # --------------------------------------------------
@@ -125,63 +120,24 @@ elseif(MSVC)
 endif()
 
 # --------------------------------------------------
-# CPU application
+# Experiment application
 # --------------------------------------------------
 
-add_executable(
-    event_voxel_run_cpu
-    apps/run_cpu.cpp
-)
-
-target_link_libraries(
-    event_voxel_run_cpu
-    PRIVATE
-        event_voxel_cpu
-)
-
-add_executable(event_voxel_experiment apps/experiment.cpp)
-target_link_libraries(event_voxel_experiment PRIVATE event_voxel_cpu)
+add_executable(event_voxel_experiment
+    apps/experiment.cpp
+    apps/experiment_config.cpp
+    apps/experiment_input.cpp
+    apps/experiment_results.cpp
+    apps/experiment_run.cpp)
+target_link_libraries(event_voxel_experiment PRIVATE event_voxel_cpu event_voxel_metavision)
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
                 OUTPUT_VARIABLE EVENT_VOXEL_GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE
                 ERROR_QUIET)
 target_compile_definitions(event_voxel_experiment PRIVATE
     EVENT_VOXEL_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
     EVENT_VOXEL_GIT_COMMIT="${EVENT_VOXEL_GIT_COMMIT}")
-if(TARGET event_voxel_metavision)
-    target_link_libraries(event_voxel_experiment PRIVATE event_voxel_metavision)
-    target_compile_definitions(event_voxel_experiment PRIVATE EVENT_VOXEL_HAS_METAVISION)
-    target_compile_definitions(event_voxel_experiment PRIVATE
-        EVENT_VOXEL_METAVISION_VERSION="${MetavisionSDK_VERSION}")
-endif()
-
-# --------------------------------------------------
-# CPU benchmarks
-# --------------------------------------------------
-
-if(EVENT_VOXEL_BUILD_BENCHMARKS)
-    include(FetchContent)
-    set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
-    set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
-    set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-    FetchContent_Declare(
-        googlebenchmark
-        GIT_REPOSITORY https://github.com/google/benchmark.git
-        GIT_TAG 192ef10025eb2c4cdd392bc502f0c852196baa48
-    )
-    FetchContent_MakeAvailable(googlebenchmark)
-
-    add_executable(
-        event_voxel_bench_cpu
-        benchmarks/bench_cpu.cpp
-    )
-
-    target_link_libraries(
-        event_voxel_bench_cpu
-        PRIVATE
-            event_voxel_cpu
-            benchmark::benchmark_main
-    )
-endif()
+target_compile_definitions(event_voxel_experiment PRIVATE
+    EVENT_VOXEL_METAVISION_VERSION="${MetavisionSDK_VERSION}")
 
 # --------------------------------------------------
 # CUDA -- optional
@@ -195,7 +151,9 @@ if(EVENT_VOXEL_ENABLE_CUDA)
     if(NOT CMAKE_CUDA_COMPILER)
         message(
             FATAL_ERROR
-            "EVENT_VOXEL_ENABLE_CUDA=ON, but no CUDA compiler was found"
+            "EVENT_VOXEL_ENABLE_CUDA=ON, but no CUDA compiler was found. "
+            "Select a preset with a valid CMAKE_CUDA_COMPILER, put nvcc on PATH, "
+            "or set CUDACXX."
         )
     endif()
 
@@ -218,7 +176,6 @@ if(EVENT_VOXEL_ENABLE_CUDA)
 
     add_library(
         event_voxel_cuda
-        src/cuda/voxelizer.cu
         src/cuda/execution_session.cu
         src/cuda/event_scatter.cu
         src/cuda/pixel_gather.cu
@@ -248,10 +205,8 @@ if(EVENT_VOXEL_ENABLE_CUDA)
         target_compile_definitions(event_voxel_cuda PRIVATE EVENT_VOXEL_NVTX)
         target_include_directories(event_voxel_experiment PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
         target_compile_definitions(event_voxel_experiment PRIVATE EVENT_VOXEL_NVTX)
-        if(TARGET event_voxel_metavision)
-            target_include_directories(event_voxel_metavision PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
-            target_compile_definitions(event_voxel_metavision PRIVATE EVENT_VOXEL_NVTX)
-        endif()
+        target_include_directories(event_voxel_metavision PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
+        target_compile_definitions(event_voxel_metavision PRIVATE EVENT_VOXEL_NVTX)
     else()
         message(STATUS "NVTX3 headers not found; profiling markers disabled")
     endif()
@@ -265,30 +220,14 @@ if(EVENT_VOXEL_ENABLE_CUDA)
     )
 
     # --------------------------------------------------
-    # CUDA application
+    # CUDA experiment support
     # --------------------------------------------------
-
-    add_executable(
-        event_voxel_run_cuda
-        apps/run_cuda.cpp
-    )
-
-    target_link_libraries(
-        event_voxel_run_cuda
-        PRIVATE
-            event_voxel_cuda
-            CUDA::cudart
-    )
 
     target_link_libraries(event_voxel_experiment PRIVATE event_voxel_cuda)
     target_compile_definitions(event_voxel_experiment PRIVATE EVENT_VOXEL_HAS_CUDA)
     target_compile_definitions(event_voxel_experiment PRIVATE
         EVENT_VOXEL_CUDA_TOOLKIT_VERSION="${CUDAToolkit_VERSION}")
 
-    if(EVENT_VOXEL_BUILD_BENCHMARKS)
-        add_executable(event_voxel_bench_cuda benchmarks/bench_cuda.cpp)
-        target_link_libraries(event_voxel_bench_cuda PRIVATE event_voxel_cuda)
-    endif()
 endif()
 
 # --------------------------------------------------

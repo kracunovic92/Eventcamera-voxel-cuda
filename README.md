@@ -1,134 +1,85 @@
 # Event Voxel CUDA
 
-A C++20 reference implementation and reproducible experiment framework for
-temporal event-camera voxelization. The repository includes three CUDA baseline
-strategies. The current numerical rule is signed, linearly interpolated accumulation
-into a `float32` tensor in `[bins, height, width]` order.
+C++20 experiments for converting event-camera streams into temporal voxel grids.
+The experiment reads fixed-duration windows directly from a Metavision HDF5
+recording. It measures a CPU reference and three CUDA strategies without an
+intermediate data format.
 
-## Research direction
+## Build and test
 
-For new fixed-time, bounded HDF5 experiments use the
-[streaming experiment guide](docs/streaming-experiments.md). The `event_voxel_experiment`
-CLI reads `.hdf5` directly through an optional Metavision C++ adapter and
-records separate CPU, CUDA strategy, transfer and ready-window timings. The
-workflow below is retained for historical whole-batch comparisons.
-The [project map](docs/architecture.md) shows how the new and historical paths connect.
-
-The proposed study measures how event memory layout, atomic contention, and
-processing overhead affect CUDA voxelization latency. Whole recordings, bounded
-event selections, and fixed-duration windows are supported as distinct
-workloads. The exact real-time use case remains a research choice; no GPU speedup
-or real-time claim is made before measured RunPod results. See
-[research design](docs/research-design.md).
-
-## Reproduce the CPU pipeline
-
-On Linux with CMake 3.24+, Ninja, a C++20 compiler, Python 3.13, Git, and Make:
+All builds need CMake 3.30+, Ninja, a C++20 compiler, Git, and Metavision SDK
+Stream with HDF5 support. CMake fetches pinned Catch2 source when tests are
+enabled. A recording is only needed to run the experiment or its optional
+HDF5 integration test. If CMake cannot find the SDK, set
+`MetavisionSDK_DIR` to the directory containing its CMake package.
+This checkout also discovers a project-local OpenEB install at `.deps/openeb`.
+In VS Code, select and configure a CMake preset after installing the SDK so
+IntelliSense reads the generated compile commands with SDK include paths.
 
 ```bash
-make setup
-make setup-external
-make setup-ecf
-make all
-make test-python
-make data-inspect-all
-make data-prepare DATASET=sparklers
-make verify-release DATASET=sparklers BINS=5
+cmake --preset local-release
+cmake --build --preset local-release --parallel
+ctest --preset local-release --output-on-failure
 ```
 
-`make setup-ecf` checks out the pinned Prophesee ECF source and builds its HDF5
-plugin. The external RPG comparison source is checked by `make setup-external`.
-Raw files belong in `data/raw/` and are never changed by the project tools.
-
-For a bounded sample from any recording:
+On a machine with an NVIDIA GPU and CUDA development toolkit, the CUDA build
+also runs the unit tests:
 
 ```bash
-make data-prepare DATASET=eye_tracking WINDOW_ID=first_100k WINDOW_MAX_EVENTS=100000
-make verify-release DATASET=eye_tracking WINDOW_ID=first_100k BINS=5
+cmake --preset cuda-release
+cmake --build --preset cuda-release --parallel
+ctest --preset cuda-release --output-on-failure
 ```
 
-Use `WINDOW_START_US` and `WINDOW_END_US` for explicit `[start, end)` windows.
-Choose a unique `WINDOW_ID` for each selection. `make verify-all` prepares the
-first 100,000 events from every raw recording and compares 2, 5, and 10-bin CPU
-outputs with the pinned RPG reference and an independent float64 oracle.
-`make verify-coverage` extends this to middle and tail selections from every
-recording.
+`make test` is a shortcut for the selected CMake preset. Unit tests use small
+hand-written event fixtures; the experiment CLI accepts only HDF5 input.
+For a local CUDA compile check without a GPU, select `cuda-local-check`; it
+uses the `~/miniconda3/envs/cuda-dev` toolkit. The `cuda-release` preset is for
+a machine with `nvcc` on `PATH` and an NVIDIA GPU.
 
-Controlled workloads can be generated with, for example,
-`make synthetic-prepare SYNTH_CASE=hotspot_100k SYNTH_SPATIAL=hotspot`.
-The generated metadata records all parameters and the binary hash.
+## Real recordings
 
-## Benchmarks
-
-The following are legacy whole-batch experiments. For the current streaming
-measurement boundaries and artifact schema, see the
-[streaming experiment guide](docs/streaming-experiments.md).
-
-The two similarly named code areas have different jobs:
-
-| Location | Purpose |
-|---|---|
-| `apps/run_cpu.cpp`, `apps/run_cuda.cpp` | Run one case, save its voxel grid and a diagnostic JSON record. |
-| `benchmarks/bench_cpu.cpp`, `benchmarks/bench_cuda.cpp` | Measure repeated voxelization calls in C++. |
-| [`scripts/experiments/`](scripts/experiments/README.md) | Run the local or RunPod pipeline, capture saved grids, check them against RPG, and summarize measurements. |
-| `scripts/runpod/` | Prepare the pod and execute the complete remote workflow. |
-
-For CUDA, the timed C++ call synchronizes the GPU and returns the output to
-host memory. The reported latency is the full host-observed call, including
-GPU work and transfers; kernel-only GPU timing is not yet implemented. See
-[benchmarking protocol](docs/benchmarking.md) for the exact timing boundary.
+All presets link Metavision SDK Stream. The integration test can read a
+local recording when `EVENT_VOXEL_HDF5_TEST_INPUT` points to it.
 
 ```bash
-make benchmark-smoke DATASET=sparklers BENCH_BINS=2,5,10
-make benchmark-checked DATASET=sparklers BENCH_BINS=2,5,10
-make benchmark-matrix
-make benchmark-summary DATASET=sparklers
+cmake --preset cuda-release \
+  -DMetavisionSDK_DIR=<SDK-cmake-directory> \
+  -DEVENT_VOXEL_HDF5_TEST_INPUT=<recording.hdf5>
+cmake --build --preset cuda-release --parallel
+ctest --preset cuda-release --output-on-failure
+./build/cuda-release/event_voxel_experiment --input <recording.hdf5>
 ```
 
-`benchmark-checked` runs both references for each measured bin count first. Full benchmark runs
-require a clean Git tree; `BENCH_ALLOW_DIRTY=1` enables exploratory runs and
-records the source state. Each invocation gets a unique folder containing raw
-Google Benchmark JSON, a manifest, a log, and copies of validation reports.
-The editable [benchmark matrix](configs/benchmark_matrix.json) covers all seven
-recordings using their prepared first 100,000 events.
-See the [benchmarking protocol](docs/benchmarking.md) for the required
-independent-run series and validation gate. Generated results stay outside Git.
+This runs the default `pipeline` measurement with 100 ms windows and five
+temporal bins. On a GPU host, `--scenario auto` measures all four processing
+paths; on a CPU-only host, it measures `cpu-host`. Use `--window-us`, `--bins`,
+and `--strategy` to vary the main experiment parameters. `--help` lists the
+less common controls.
 
-## Project documentation
+`--mode` chooses the measurement: `pipeline` for complete ready-window work,
+`kernel` for the final CUDA kernel, `strategy` for clear/preprocessing/kernel,
+`transfer` for memory copies, `replay` for a simulated queue, `profile` for one
+window, `validate` for correctness, or `export` for `.npy` output. `--scenario`
+chooses where processing runs and where its result ends up: `cpu-host`,
+`cpu-to-device`, `gpu-device`, or `gpu-to-host`. The `auto` default selects the
+available paths. GPU-only modes select `gpu-device` automatically.
 
-- [Datasets and sampling](docs/datasets.md)
-- [Numerical verification](docs/validation.md)
-- [Reproduction and artifact layout](docs/reproducibility.md)
-- [Python script map and pipeline stages](docs/python-scripts.md)
-- [Research design](docs/research-design.md)
+`--window-us` sets the duration of each SDK time slice and is a research
+parameter. `--max-window-events` rejects slices that exceed the configured
+event count.
 
-## CUDA build and RunPod preparation
+Each invocation creates a `results/run-*/` directory with per-window timing,
+sample measurements, metadata, and a summary. `--mode validate` compares CUDA
+strategies with the CPU reference; `--mode export` can save selected `.npy`
+grids. See [streaming experiments](docs/streaming-experiments.md) for all modes
+and timing boundaries.
 
-The CUDA backend is optional. For a local compile check, activate the `cuda-dev`
-Conda environment, which supplies `nvcc`, then run:
+## Guides
 
-```bash
-cmake --preset cuda-local-check
-cmake --build --preset cuda-local-check
-ctest --preset cuda-local-check --output-on-failure
-```
-
-The local preset uses the Conda CUDA toolkit and `/usr/bin/g++-15`. CUDA tests
-skip when no NVIDIA GPU is available, so the compile check alone does not
-establish GPU correctness. The `cuda-release` preset is for the remote GPU
-container. The committed RunPod matrices require the prepared real recordings;
-they are packaged separately from Git. See [the RunPod runbook](docs/runpod.md)
-for dataset transfer, image, execution, result transfer, and validation steps.
-
-Run `make pipeline-local SMOKE=1` on the local machine to prepare a small,
-externally verified dataset archive. Transfer that archive to the pod and run
-`make pipeline-runpod SMOKE=1` there. Remove `SMOKE=1` for full runs after the
-smoke workflow succeeds. See [the experiment script map](scripts/experiments/README.md).
-
-`event_voxel_run_cpu` and `event_voxel_run_cuda` save individual voxel grids and
-JSON run records. The CUDA app requires `--strategy event-scatter`,
-`--strategy pixel-gather`, or `--strategy sort-reduce`. The RunPod driver captures
-all configured CPU and CUDA grids under `data/outputs/` in its session archive,
-then compares each grid directly with the pinned RPG and float64 references using
-`scripts/experiments/validate_outputs.py capture`. Repeated
-performance measurements remain in the separate benchmark executables.
+- [Architecture](docs/architecture.md): input, windowing, CPU, and CUDA connections.
+- [Datasets](docs/datasets.md): raw recording catalog and window choices.
+- [Validation](docs/validation.md): numerical rule and correctness checks.
+- [Reproducibility](docs/reproducibility.md): source and result provenance.
+- [RunPod](docs/runpod.md): GPU setup and network-volume transfers.
+- [Research design](docs/research-design.md): questions and experiment dimensions.

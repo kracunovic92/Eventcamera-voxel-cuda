@@ -23,6 +23,7 @@ struct GpuInfo {
 };
 
 [[nodiscard]] GpuInfo gpu_info();
+[[nodiscard]] bool is_available() noexcept;
 
 class CudaExecutionSession {
   public:
