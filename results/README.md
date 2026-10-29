@@ -1,11 +1,12 @@
 # Results
 
-`event_voxel_experiment` creates a new ignored `run-*/` folder for each
-invocation. It contains `windows.csv`, `samples.csv`, `crossovers.csv`,
-`metadata.json`, and `summary.json`; export mode can also save selected `.npy`
-grids. These generated files are not tracked by Git.
+`event_voxel_experiment` creates an ignored `run-*/` folder for each
+invocation. It contains `windows.csv`, `samples.csv`, `metadata.json`, and
+`summary.json`. RunPod downloads live in ignored `results/runpod/`.
+The per-window timings and stage definitions are described in
+[streaming experiments](../docs/streaming-experiments.md).
 
-Archive the run folder, its SHA-256, and the source recording hash before
-ending a temporary RunPod pod. The [RunPod guide](../docs/runpod.md) explains
-network-volume retrieval. Historical measurements remain in Git history; local
-copies of earlier results are not part of the current workflow.
+Published batches live in tracked `results/published/runpod/`. Each includes
+comparison tables and a compressed archive of the original CSV/JSON files,
+with a SHA-256 checksum. The [RunPod guide](../docs/runpod.md) explains how to
+download, inspect, and publish a batch.

@@ -1,0 +1,8 @@
+git_commit=8abf4ac6d88bc10b37ab5d283c19d70514eeabe1
+window_us_values=50000,100000,200000,500000
+bin_values=2,5,10
+block_size=256
+repetitions=1
+recordings=7
+started_utc=2026-10-29T15:25:27Z
+finished_utc=2026-10-29T15:31:59Z

@@ -50,6 +50,7 @@ CMakeUserPresets.json
 /results/reports/
 /results/validation/
 /results/downloads/
+/results/runpod/
 /results/run-*/
 /results/profiles/
 
