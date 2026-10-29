@@ -120,13 +120,12 @@ void require_grids_close(const VoxelGrid& expected, const VoxelGrid& actual, Str
 // --------------------------------------------------
 
 void require_all_cuda_strategies_match(const EventBatch& batch, const VoxelizationSpec& spec) {
+    CpuReferenceVoxelizer cpu;
+    const VoxelGrid expected = cpu.voxelize(batch, spec);
+
     if (!event_voxel::cuda::is_available()) {
         SKIP("CUDA device is not available");
     }
-
-    CpuReferenceVoxelizer cpu;
-
-    const VoxelGrid expected = cpu.voxelize(batch, spec);
 
     for (const Strategy strategy : CUDA_STRATEGIES) {
 
@@ -234,6 +233,10 @@ TEST_CASE("CUDA voxelizers match CPU for events across many pixels",
         events.push_back(make_event(x, y, timestamp, polarity));
     }
 
+    std::stable_sort(events.begin(), events.end(), [](const Event& left, const Event& right) {
+        return left.timestamp_us < right.timestamp_us;
+    });
+
     const EventBatch batch = make_batch(width, height, start_us, end_us, std::move(events));
 
     const VoxelizationSpec spec = make_spec(5);
@@ -277,6 +280,10 @@ TEST_CASE("CUDA voxelizers match CPU under heavy voxel contention",
 
         events.push_back(make_event(3, 2, timestamp, polarity));
     }
+
+    std::stable_sort(events.begin(), events.end(), [](const Event& left, const Event& right) {
+        return left.timestamp_us < right.timestamp_us;
+    });
 
     const EventBatch batch = make_batch(8, 6, start_us, end_us, std::move(events));
 
