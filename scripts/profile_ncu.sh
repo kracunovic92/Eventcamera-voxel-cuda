@@ -12,6 +12,7 @@ fi
 profile_prefix=$1
 recording=$2
 shift 2
+mkdir -p "$(dirname "$profile_prefix")"
 ncu --set full --target-processes all --export="${profile_prefix}" \
     ./build/cuda-profile/event_voxel_experiment --input "${recording}" \
-    --mode kernel --max-windows 1 --repeat 1 --warmup 1 "$@"
+    "$@"

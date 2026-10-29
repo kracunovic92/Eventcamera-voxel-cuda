@@ -18,20 +18,9 @@ cmake --build --preset cuda-release --parallel
 ctest --preset cuda-release --output-on-failure
 ```
 
-For an experiment-level check, use `--mode validate` with the same input,
-window duration, and bin count planned for measurement. It checks one selected
-window: `--export-index N` chooses that window, starting at zero. When a GPU is
-available it compares all three CUDA strategies with the CPU output; otherwise
-it checks the CPU path. Repeat selected indices to cover different event rates.
-The command exits with an error when a comparison fails. Save its successful
-command output alongside the result folder before measuring.
-
-```bash
-./build/cuda-release/event_voxel_experiment \
-  --input data/raw/sparklers.hdf5 --mode validate \
-  --window-us 50000 --results-root results
-```
-
-With Metavision SDK Stream installed, also build and run the HDF5 integration
-test using `EVENT_VOXEL_HDF5_TEST_INPUT`. It checks bounded streaming and
-window continuity on an actual recording.
+The experiment command measures one backend; it does not compute a CPU
+reference in a CUDA build. The C++ tests compare CUDA strategies with the CPU
+reference on generated windows. Run the HDF5 integration test with
+`EVENT_VOXEL_HDF5_TEST_INPUT` to check streaming and window continuity on an
+actual recording. For larger-scale numerical checks before RunPod measurements,
+extend that test suite with representative windows from the recording.

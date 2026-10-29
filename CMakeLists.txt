@@ -123,13 +123,16 @@ endif()
 # Experiment application
 # --------------------------------------------------
 
+find_package(nlohmann_json 3.11 CONFIG REQUIRED)
+
 add_executable(event_voxel_experiment
     apps/experiment.cpp
     apps/experiment_config.cpp
-    apps/experiment_input.cpp
+    apps/experiment_metrics.cpp
     apps/experiment_results.cpp
     apps/experiment_run.cpp)
-target_link_libraries(event_voxel_experiment PRIVATE event_voxel_cpu event_voxel_metavision)
+target_link_libraries(event_voxel_experiment PRIVATE
+    event_voxel_metavision nlohmann_json::nlohmann_json)
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
                 OUTPUT_VARIABLE EVENT_VOXEL_GIT_COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE
                 ERROR_QUIET)
@@ -196,20 +199,18 @@ if(EVENT_VOXEL_ENABLE_CUDA)
             CUDA::cudart
     )
 
-    # NVTX3 is header-only; locations vary between CUDA distributions.
+    # CUDA builds always include NVTX3 markers; header locations vary by toolkit.
     file(GLOB _nvtx_candidates "${CUDAToolkit_ROOT}/nsight-compute*/host/target-linux-x64/nvtx/include")
-    find_path(EVENT_VOXEL_NVTX_INCLUDE_DIR nvtx3/nvtx3.hpp
+    find_path(EVENT_VOXEL_NVTX3_INCLUDE_DIR nvtx3/nvtx3.hpp
               HINTS ${_nvtx_candidates} ${CUDAToolkit_INCLUDE_DIRS})
-    if(EVENT_VOXEL_NVTX_INCLUDE_DIR)
-        target_include_directories(event_voxel_cuda PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
-        target_compile_definitions(event_voxel_cuda PRIVATE EVENT_VOXEL_NVTX)
-        target_include_directories(event_voxel_experiment PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
-        target_compile_definitions(event_voxel_experiment PRIVATE EVENT_VOXEL_NVTX)
-        target_include_directories(event_voxel_metavision PRIVATE ${EVENT_VOXEL_NVTX_INCLUDE_DIR})
-        target_compile_definitions(event_voxel_metavision PRIVATE EVENT_VOXEL_NVTX)
-    else()
-        message(STATUS "NVTX3 headers not found; profiling markers disabled")
+    if(NOT EXISTS "${EVENT_VOXEL_NVTX3_INCLUDE_DIR}/nvtx3/nvtx3.hpp")
+        message(FATAL_ERROR "CUDA builds require NVTX3 headers (nvtx3/nvtx3.hpp). "
+                            "Set EVENT_VOXEL_NVTX3_INCLUDE_DIR to their include directory.")
     endif()
+    target_include_directories(event_voxel_cuda PRIVATE ${EVENT_VOXEL_NVTX3_INCLUDE_DIR})
+    target_include_directories(event_voxel_experiment PRIVATE ${EVENT_VOXEL_NVTX3_INCLUDE_DIR})
+    target_include_directories(event_voxel_metavision PRIVATE ${EVENT_VOXEL_NVTX3_INCLUDE_DIR})
+    target_compile_definitions(event_voxel_metavision PRIVATE EVENT_VOXEL_HAS_CUDA)
 
     set_target_properties(
         event_voxel_cuda
@@ -228,6 +229,10 @@ if(EVENT_VOXEL_ENABLE_CUDA)
     target_compile_definitions(event_voxel_experiment PRIVATE
         EVENT_VOXEL_CUDA_TOOLKIT_VERSION="${CUDAToolkit_VERSION}")
 
+endif()
+
+if(NOT EVENT_VOXEL_ENABLE_CUDA)
+    target_link_libraries(event_voxel_experiment PRIVATE event_voxel_cpu)
 endif()
 
 # --------------------------------------------------

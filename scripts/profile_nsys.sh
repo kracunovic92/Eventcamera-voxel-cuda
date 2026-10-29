@@ -12,6 +12,7 @@ fi
 profile_prefix=$1
 recording=$2
 shift 2
+mkdir -p "$(dirname "$profile_prefix")"
 nsys profile --trace=cuda,nvtx,osrt --sample=none --output="${profile_prefix}" \
     ./build/cuda-profile/event_voxel_experiment --input "${recording}" \
-    --mode profile --scenario gpu-device --max-windows 1 "$@"
+    "$@"

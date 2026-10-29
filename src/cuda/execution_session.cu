@@ -10,10 +10,8 @@
 
 #include <chrono>
 #include <functional>
-#include <stdexcept>
-#ifdef EVENT_VOXEL_NVTX
 #include <nvtx3/nvtx3.hpp>
-#endif
+#include <stdexcept>
 
 namespace event_voxel::cuda {
 
@@ -73,9 +71,7 @@ struct CudaExecutionSession::Impl {
         return {gpu_ms, std::chrono::duration<double, std::milli>(wall_end - wall_start).count()};
     }
     void prepare() {
-#ifdef EVENT_VOXEL_NVTX
         nvtx3::scoped_range marker("strategy preprocessing");
-#endif
         switch (strategy) {
         case Strategy::EventScatter:
             break;
@@ -88,9 +84,7 @@ struct CudaExecutionSession::Impl {
         }
     }
     void kernel() {
-#ifdef EVENT_VOXEL_NVTX
         nvtx3::scoped_range marker("strategy final kernel");
-#endif
         switch (strategy) {
         case Strategy::EventScatter:
             shared::run_event_scatter(events.data(), voxels.data(), params, stream, block_size);
@@ -154,9 +148,7 @@ void CudaExecutionSession::set_window(EventWindowView window, VoxelizationSpec s
 }
 
 StageTiming CudaExecutionSession::upload_events() {
-#ifdef EVENT_VOXEL_NVTX
     nvtx3::scoped_range marker("H2D events");
-#endif
     return impl_->measure([this] {
         const auto bytes = impl_->window.events.size_bytes();
         if (bytes)
@@ -166,9 +158,7 @@ StageTiming CudaExecutionSession::upload_events() {
     });
 }
 StageTiming CudaExecutionSession::upload_host_grid(std::span<const float> grid) {
-#ifdef EVENT_VOXEL_NVTX
     nvtx3::scoped_range marker("H2D CPU voxels");
-#endif
     if (grid.size() != impl_->params.voxel_count)
         throw std::invalid_argument("Grid size mismatch");
     return impl_->measure([this, grid] {
@@ -178,9 +168,7 @@ StageTiming CudaExecutionSession::upload_host_grid(std::span<const float> grid) 
     });
 }
 StageTiming CudaExecutionSession::clear() {
-#ifdef EVENT_VOXEL_NVTX
     nvtx3::scoped_range marker("output clear");
-#endif
     return impl_->measure([this] {
         shared::check_cuda(cudaMemsetAsync(impl_->voxels.data(), 0,
                                            impl_->params.voxel_count * sizeof(float),
@@ -196,25 +184,19 @@ StageTiming CudaExecutionSession::run_kernel() {
 }
 StageTiming CudaExecutionSession::run_strategy() {
     return impl_->measure([this] {
-#ifdef EVENT_VOXEL_NVTX
         {
             nvtx3::scoped_range marker("output clear");
-#endif
             shared::check_cuda(cudaMemsetAsync(impl_->voxels.data(), 0,
                                                impl_->params.voxel_count * sizeof(float),
                                                impl_->stream),
                                "cudaMemset(voxels)");
-#ifdef EVENT_VOXEL_NVTX
         }
-#endif
         impl_->prepare();
         impl_->kernel();
     });
 }
 StageTiming CudaExecutionSession::download_grid(std::span<float> grid) {
-#ifdef EVENT_VOXEL_NVTX
     nvtx3::scoped_range marker("D2H voxels");
-#endif
     if (grid.size() != impl_->params.voxel_count)
         throw std::invalid_argument("Grid size mismatch");
     return impl_->measure([this, grid] {

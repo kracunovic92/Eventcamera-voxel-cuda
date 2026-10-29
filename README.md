@@ -2,13 +2,13 @@
 
 C++20 experiments for converting event-camera streams into temporal voxel grids.
 The experiment reads fixed-duration windows directly from a Metavision HDF5
-recording. It measures a CPU reference and three CUDA strategies without an
-intermediate data format.
+recording. A CPU build processes every slice with the CPU voxelizer; a CUDA
+build processes every slice with one selected CUDA strategy.
 
 ## Build and test
 
-All builds need CMake 3.30+, Ninja, a C++20 compiler, Git, and Metavision SDK
-Stream with HDF5 support. CMake fetches pinned Catch2 source when tests are
+All builds need CMake 3.30+, Ninja, a C++20 compiler, Git, nlohmann_json 3.11+,
+and Metavision SDK Stream with HDF5 support. CMake fetches pinned Catch2 source when tests are
 enabled. A recording is only needed to run the experiment or its optional
 HDF5 integration test. If CMake cannot find the SDK, set
 `MetavisionSDK_DIR` to the directory containing its CMake package.
@@ -51,33 +51,20 @@ ctest --preset cuda-release --output-on-failure
 ./build/cuda-release/event_voxel_experiment --input <recording.hdf5>
 ```
 
-This runs the default `pipeline` measurement with 100 ms windows and five
-temporal bins. On a GPU host, `--scenario auto` measures all four processing
-paths; on a CPU-only host, it measures `cpu-host`. Use `--window-us`, `--bins`,
-and `--strategy` to vary the main experiment parameters. `--help` lists the
-less common controls.
+The experiment processes the complete file once, using 100 ms windows and five
+temporal bins by default. Set `--window-us` and `--bins` in either build. The
+CUDA build also accepts `--strategy event-scatter|pixel-gather|sort-reduce`
+and `--block-size 128|256|512`; it does not run the CPU voxelizer.
 
-`--mode` chooses the measurement: `pipeline` for complete ready-window work,
-`kernel` for the final CUDA kernel, `strategy` for clear/preprocessing/kernel,
-`transfer` for memory copies, `replay` for a simulated queue, `profile` for one
-window, `validate` for correctness, or `export` for `.npy` output. `--scenario`
-chooses where processing runs and where its result ends up: `cpu-host`,
-`cpu-to-device`, `gpu-device`, or `gpu-to-host`. The `auto` default selects the
-available paths. GPU-only modes select `gpu-device` automatically.
-
-`--window-us` sets the duration of each SDK time slice and is a research
-parameter. `--max-window-events` rejects slices that exceed the configured
-event count.
-
-Each invocation creates a `results/run-*/` directory with per-window timing,
-sample measurements, metadata, and a summary. `--mode validate` compares CUDA
-strategies with the CPU reference; `--mode export` can save selected `.npy`
-grids. See [streaming experiments](docs/streaming-experiments.md) for all modes
-and timing boundaries.
+Each invocation creates a `results/run-*/` directory with per-window input
+timing, per-phase processing samples, metadata, and summary statistics.
+Correctness checks live in the test suite. See
+[streaming experiments](docs/streaming-experiments.md) for timing boundaries.
 
 ## Guides
 
 - [Architecture](docs/architecture.md): input, windowing, CPU, and CUDA connections.
+- [Experiment walkthrough](docs/experiment-walkthrough.md): function-by-function control flow and timing boundaries.
 - [Datasets](docs/datasets.md): raw recording catalog and window choices.
 - [Validation](docs/validation.md): numerical rule and correctness checks.
 - [Reproducibility](docs/reproducibility.md): source and result provenance.

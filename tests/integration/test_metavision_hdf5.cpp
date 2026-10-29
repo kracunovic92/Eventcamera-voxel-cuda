@@ -9,9 +9,7 @@
 int main(int argc, char** argv) {
     if (argc != 2)
         return 2;
-    constexpr std::size_t window_cap = 1'000'000;
-    auto source =
-        event_voxel::data::open_metavision_hdf5(std::filesystem::path(argv[1]), 50'000, window_cap);
+    auto source = event_voxel::data::open_metavision_hdf5(std::filesystem::path(argv[1]), 50'000);
     event_voxel::EventWindowView window;
     std::size_t total_events = 0, windows = 0;
     std::int64_t previous_end = -1;
@@ -30,9 +28,8 @@ int main(int argc, char** argv) {
         total_events += window.events.size();
         ++windows;
     }
-    if (windows < 2 || total_events <= source->peak_window_events() ||
-        source->peak_window_events() > window_cap)
-        throw std::runtime_error("Slice count or event cap check failed");
+    if (windows < 2 || total_events <= source->peak_window_events())
+        throw std::runtime_error("Slice count or peak event check failed");
     std::cout << "windows=" << windows << " events=" << total_events
               << " peak_window_events=" << source->peak_window_events() << '\n';
 }

@@ -2,7 +2,7 @@
 
 Run `event_voxel_experiment` on a GPU pod. The experiment reads original HDF5
 recordings through Metavision SDK Stream and its ECF codec. It needs a CUDA
-development toolkit for GPU scenarios.
+development toolkit and NVTX3 headers for CUDA builds.
 
 ## Prepare storage and a pod
 
@@ -30,7 +30,7 @@ missing user-space tools on the pod if needed:
 ```bash
 apt-get update
 apt-get install -y --no-install-recommends \
-  build-essential ca-certificates git ninja-build python3-venv
+  build-essential ca-certificates git ninja-build nlohmann-json3-dev python3-venv
 python3 -m venv /opt/event-voxel-tools
 /opt/event-voxel-tools/bin/python -m pip install 'cmake>=3.30,<5'
 export PATH="/opt/event-voxel-tools/bin:$PATH"
@@ -76,19 +76,26 @@ cmake --preset cuda-release \
 cmake --build --preset cuda-release --parallel
 ctest --preset cuda-release --output-on-failure
 ./build/cuda-release/event_voxel_experiment \
-  --input /workspace/data/raw/sparklers.hdf5 --mode validate \
-  --window-us 100000 --bins 5 --export-index 0 \
-  --results-root /workspace/experiment-results
-./build/cuda-release/event_voxel_experiment \
-  --input /workspace/data/raw/sparklers.hdf5 --mode pipeline --scenario all \
-  --window-us 100000 --bins 5 --max-windows 100 --warmup 3 --repeat 10 \
+  --input /workspace/data/raw/sparklers.hdf5 \
+  --window-us 100000 --bins 5 --strategy event-scatter \
   --results-root /workspace/experiment-results
 ```
 
-Validate more window indices with `--export-index N` to cover varied event
-rates. Repeat the pipeline command with other durations and recordings only
-after the integration and validation runs pass. See [streaming experiments](streaming-experiments.md)
-for timing boundaries and memory caps.
+Run the CPU build on the same pod for CPU measurements:
+
+```bash
+cmake --preset local-release
+cmake --build --preset local-release --parallel
+./build/local-release/event_voxel_experiment \
+  --input /workspace/data/raw/sparklers.hdf5 \
+  --window-us 100000 --bins 5 \
+  --results-root /workspace/experiment-results
+```
+
+Repeat the CUDA command with `pixel-gather` and `sort-reduce`, then with
+other durations and recordings after the tests pass. Each invocation processes
+the full file once. See
+[streaming experiments](streaming-experiments.md) for timing boundaries.
 
 ## Retrieve results without a direct pod connection
 

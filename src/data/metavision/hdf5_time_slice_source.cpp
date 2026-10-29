@@ -9,7 +9,7 @@
 #include <stdexcept>
 #include <utility>
 #include <vector>
-#ifdef EVENT_VOXEL_NVTX
+#ifdef EVENT_VOXEL_HAS_CUDA
 #include <nvtx3/nvtx3.hpp>
 #endif
 
@@ -18,16 +18,13 @@ namespace {
 
 class MetavisionHdf5TimeSliceSource final : public TimeSliceSource {
   public:
-    MetavisionHdf5TimeSliceSource(const std::filesystem::path& path, std::int64_t window_us,
-                                  std::size_t max_window_events)
+    MetavisionHdf5TimeSliceSource(const std::filesystem::path& path, std::int64_t window_us)
         : slicer_(open_camera(path),
                   Metavision::CameraStreamSlicer::SliceCondition::make_n_us(window_us), 1),
-          window_us_(window_us), max_window_events_(max_window_events),
-          width_(slicer_.camera().geometry().get_width()),
+          window_us_(window_us), width_(slicer_.camera().geometry().get_width()),
           height_(slicer_.camera().geometry().get_height()) {
-        if (window_us_ <= 0 || max_window_events_ == 0 || width_ == 0 || height_ == 0 ||
-            width_ > 65'536 || height_ > 65'536)
-            throw std::invalid_argument("Invalid time slice duration, event cap or geometry");
+        if (window_us_ <= 0 || width_ == 0 || height_ == 0 || width_ > 65'536 || height_ > 65'536)
+            throw std::invalid_argument("Invalid time slice duration or geometry");
     }
 
     bool next(EventWindowView& window) override {
@@ -52,9 +49,8 @@ class MetavisionHdf5TimeSliceSource final : public TimeSliceSource {
             converted_.clear();
             return false;
         }
-        if (!slice.events || slice.n_events != slice.events->size() ||
-            slice.n_events > max_window_events_)
-            throw std::runtime_error("SDK slice is invalid or exceeds max_window_events");
+        if (!slice.events || slice.n_events != slice.events->size())
+            throw std::runtime_error("SDK slice is invalid");
 
         // For MET_N_US, t is the exclusive upper bound. For the final flush,
         // t is the last event timestamp, so extend it by one microsecond.
@@ -66,7 +62,7 @@ class MetavisionHdf5TimeSliceSource final : public TimeSliceSource {
             (full && end_us - start_us != window_us_))
             throw std::runtime_error("Unexpected SDK time slice boundary");
 
-#ifdef EVENT_VOXEL_NVTX
+#ifdef EVENT_VOXEL_HAS_CUDA
         nvtx3::scoped_range marker("convert CD slice");
 #endif
         converted_.clear();
@@ -121,7 +117,6 @@ class MetavisionHdf5TimeSliceSource final : public TimeSliceSource {
     Metavision::CameraStreamSlicer slicer_;
     Metavision::CameraStreamSlicer::SliceIterator iterator_;
     std::int64_t window_us_;
-    std::size_t max_window_events_;
     std::uint32_t width_, height_;
     std::vector<Event> converted_;
     std::size_t peak_window_events_ = 0;
@@ -133,11 +128,10 @@ class MetavisionHdf5TimeSliceSource final : public TimeSliceSource {
 } // namespace
 
 std::unique_ptr<TimeSliceSource> open_metavision_hdf5(const std::filesystem::path& path,
-                                                      std::int64_t window_us,
-                                                      std::size_t max_window_events) {
-    if (window_us <= 0 || max_window_events == 0)
-        throw std::invalid_argument("Window duration and event cap must be positive");
-    return std::make_unique<MetavisionHdf5TimeSliceSource>(path, window_us, max_window_events);
+                                                      std::int64_t window_us) {
+    if (window_us <= 0)
+        throw std::invalid_argument("Window duration must be positive");
+    return std::make_unique<MetavisionHdf5TimeSliceSource>(path, window_us);
 }
 
 } // namespace event_voxel::data

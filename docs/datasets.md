@@ -15,7 +15,8 @@ and its SHA-256 hash before a formal run.
 | spinner | 640×480 | 54,165,303 | 0–5,002,329 |
 | traffic_monitoring | 640×480 | 17,939,153 | 48–27,999,870 |
 
-Choose `--window-us` to define each SDK time slice and `--max-windows` to cap
-the number processed. `--max-window-events` rejects an oversized slice; the
-SDK queue holds at most one completed slice. Record the source file hash with
-each result archive; a path alone does not identify a dataset revision.
+Choose `--window-us` to define each SDK time slice. The experiment processes
+all slices through the end of the file. The SDK queue holds at most one
+completed slice, but the number of events in a slice is not capped. Record the
+source file hash with each result archive; a path alone does not identify a
+dataset revision.

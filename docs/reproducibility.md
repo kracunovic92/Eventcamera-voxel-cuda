@@ -12,20 +12,18 @@ cmake --preset cuda-release \
 cmake --build --preset cuda-release --parallel
 ctest --preset cuda-release --output-on-failure
 ./build/cuda-release/event_voxel_experiment \
-  --input data/raw/sparklers.hdf5 --mode pipeline --scenario all \
-  --window-us 100000 --bins 5 --max-windows 100 --warmup 3 --repeat 10
+  --input data/raw/sparklers.hdf5 --window-us 100000 --bins 5 \
+  --strategy event-scatter
 ```
 
 Each `results/run-*/` folder contains `metadata.json` with configuration,
-build and Git identity, source path, and available hardware details. Save the
-exact command too: some CLI limits, including `--max-windows`, are not recorded
-in metadata. `windows.csv`
-records the windows and input preparation time. `samples.csv` contains every
-timed sample. `summary.json` aggregates samples, and `crossovers.csv` compares
-CPU and GPU scenarios where both exist. Save the input hash and exact SDK,
-CUDA toolkit, compiler, template or image versions alongside that folder.
+build and Git identity, source path, and hardware details. `windows.csv`
+records all windows and input preparation time. `samples.csv` contains every
+phase sample; `summary.json` aggregates them. Save the exact command, input
+hash, and SDK, CUDA toolkit, compiler, template or image versions alongside
+the folder.
 
 For performance comparisons, use the same recording, time windows, bin count,
-GPU, build type, and scenario. Run correctness mode before reporting a new CUDA
+GPU, and build type. Run correctness tests before reporting a new CUDA
 strategy, and archive the raw result folder before ending a temporary pod. See
 [streaming experiments](streaming-experiments.md) for what each timing includes.

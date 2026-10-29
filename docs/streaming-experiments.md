@@ -1,125 +1,117 @@
 # Streaming experiments
 
-`event_voxel_experiment` measures fixed-duration, ready-window workloads from
-original HDF5 recordings.
+`event_voxel_experiment` reads one HDF5 recording through Metavision SDK
+Stream, divides it into fixed-duration CD-event slices, and processes every
+slice once through the end of the file. There is one backend per invocation:
+CPU in a CPU build, or one selected strategy in a CUDA build.
 
-## Build
-
-Every build requires SDK Stream; a CPU-only build needs no GPU:
-
-```bash
-cmake --preset local-release
-cmake --build --preset local-release
-ctest --preset local-release --output-on-failure
-```
-
-Install Metavision SDK Stream with its ECF codec before configuring any preset.
-Set `-DMetavisionSDK_DIR=<SDK-cmake-directory>` if it is outside CMake's search
-path. Use `cuda-release` for CUDA on RunPod. The adapter is isolated in
-`src/data/metavision/`, and the recording is read directly. On this Kali host,
-OpenEB must be built from source; the prebuilt packages target Ubuntu 22.04
-and 24.04. See the [official OpenEB source build guide](https://docs.prophesee.ai/stable/installation/linux_openeb.html).
-
-Run an HDF5 CPU experiment:
+## Run
 
 ```bash
 ./build/local-release/event_voxel_experiment \
-  --input data/raw/sparklers.hdf5 --mode pipeline --scenario cpu-host \
-  --window-us 100000 --bins 5 \
-  --max-window-events 1000000 \
-  --max-windows 100 --warmup 3 --repeat 10 --results-root results
+  --input data/raw/sparklers.hdf5 --window-us 100000 --bins 5
+
+./build/cuda-release/event_voxel_experiment \
+  --input data/raw/sparklers.hdf5 --window-us 100000 --bins 5 \
+  --strategy event-scatter --block-size 256
 ```
 
-The default is `--mode pipeline --scenario auto`. `mode` selects what is measured;
-`scenario` selects the processing path and output destination. On a GPU host,
-`auto` runs all four paths in pipeline/replay mode; on a CPU-only host it runs
-`cpu-host`. For a focused four-path crossover run, use
-`--mode pipeline --scenario all`.
-
-Run the four default candidates separately with `--window-us 50000`, `100000`,
-`250000`, and `500000`. `--block-size` accepts 128, 256, or 512. Strategies are
-`event-scatter`, `pixel-gather`, and `sort-reduce`.
+`--results-root` defaults to `results`. `--window-us` defaults to 100000
+microseconds and `--bins` to 5. CUDA builds accept `event-scatter`,
+`pixel-gather`, or `sort-reduce` and block sizes 128, 256, or 512. Run each
+strategy separately. For CPU versus GPU comparisons, run both builds on the
+same machine with the same file, window duration, and bin count.
 
 ## Window and memory contract
 
-The SDK fixes the duration and origin of time slices from its first CD events.
-Intervals are consecutive, non-overlapping `[start_us,end_us)`. Empty full
-slices within the recording are emitted. The final partial interval ends at
-the last CD event timestamp plus one microsecond. Original event timestamps
-remain in microseconds because timestamp shifting is disabled. External
-triggers are excluded from voxel input.
-
 `Camera::from_file` opens HDF5 with real-time playback and timestamp shifting
-disabled. `CameraStreamSlicer` makes fixed-duration CD slices and keeps at most
-one completed slice in its queue. The adapter converts each slice into reusable
-`Event` storage. `EventWindowView` borrows that storage until the next source
-read. A slice above `max_window_events` raises an error; this cap is checked
-after the SDK creates the slice and does not bound SDK-internal memory.
-`peak_window_events` measures the largest converted slice, not SDK memory.
-`sizeof(Event)` is recorded to make the conversion cost explicit.
+disabled. `CameraStreamSlicer` makes consecutive, non-overlapping
+`[start_us,end_us)` slices and queues at most one completed slice. Empty full
+slices may occur. The final partial slice ends at the last CD event timestamp
+plus one microsecond. External triggers are excluded.
 
-## Measurement boundaries
+The adapter converts each slice into reusable `Event` storage. An
+`EventWindowView` borrows that storage until the next source read, so the
+experiment finishes processing before advancing. Slice duration controls
+time, not event count; a dense slice can still require substantial host and
+device memory. `peak_window_events` reports the largest converted slice.
 
-- `kernel`: ready device input, required gather/sort preprocessing and output
-  clear occur before the CUDA event interval. The timed stage is the final
-  strategy kernel. This is not a complete strategy comparison.
-- `strategy`: output clear, grouping or sorting and reduction, and the final
-  kernel. Input transfer, host preparation, and allocations are outside.
-  Common and strategy scratch buffers are reserved beforehand; Thrust's
-  internal scan/sort/reduce implementation may still allocate during a
-  strategy sample, and this is marked in metadata.
-- `transfer`: three independent H2D events, H2D CPU voxels, and D2H grid
-  samples with byte counts. Host memory is pageable, transfers use one explicit
-  CUDA stream, and both synchronized CUDA event and host wall times are saved.
-- `pipeline`: CPU host, CPU then grid H2D, event H2D then GPU device result,
-  and GPU with grid D2H. `pipeline` samples are synchronized host wall times;
-  stage rows are also saved. Grid allocation and CPU output zeroing are part
-  of CPU processing. CUDA input/output capacity is reserved before timed runs.
-- `replay`: repeats the selected ready-window pipeline, then simulates a
-  sequential schedule using each window's median processing time and release
-  at the **end** of its interval. It reports queue delay, deadline misses,
-  idle time, and time from window end to result. The deadline is one configured
-  window duration after release. Input preparation time and windows where it
-  exceeded an interval are reported separately; this does not model a live
-  reader queue or prove camera latency.
-- `profile`: one selected window with a single repetition and NVTX ranges
-  when NVTX3 headers are installed. Select it with `--profile-index N` and set
-  `--max-windows` above N. Use the Nsight wrappers below. Profiled
-  durations are not baseline latency samples.
-- `validate` and `export`: separate, unmeasured invocations. `validate`
-  compares all three GPU strategies to the CPU reference where a GPU exists;
-  on a CPU build it checks the CPU path. `export` writes one selected CPU `.npy`
-  grid and, where available, the selected GPU strategy grid in `outputs/`,
-  selected by `--export-index`.
+## Timing and results
 
-`windows.csv` records each interval, event rate, final flag, and combined input
-decode/window preparation wall time. `samples.csv` has every measured stage
-sample, scenario, iteration and byte count. `crossovers.csv` gives each window's
-CPU-to-device and GPU-device medians where both are measured. `metadata.json`
-records configuration, source, CPU and available GPU details, build and Git
-commit, capacities, event size, and inclusion flags. `summary.json` provides
-descriptive statistics, event counts, crossover counts and replay data. These
-use schema version 2. Result folders default to ignored `results/run-*/`.
+`results/run-*/windows.csv` records sequence, interval, CD count, event rate,
+partial-final flag, and `input_preparation_ms`. That wall time covers the
+call to get the next SDK slice, including waiting and local conversion. It
+does not isolate SDK decoding.
 
-The crossover compares synchronized host wall time for the same ready window.
-`cpu-host`, `cpu-to-device`, `gpu-device`, and `gpu-to-host` have different
-output destinations and should be read as such. There is no neural network.
-The oldest event is about one window duration old when the interval releases;
-oldest-event-to-result age also includes backlog and ready-window processing.
-No result here implies downstream detection accuracy.
+`samples.csv` records `sequence,backend,stage,wall_ms,cuda_event_ms,bytes`.
+The CPU build records `cpu/voxelize`, `cpu/pipeline`, and
+`cpu/processing-total` as the same timed interval: voxelization into a host
+grid. The CUDA build records:
+
+- `prepare`: reserve or reuse device buffers, validate and set the window,
+  and resize the host output buffer.
+- `h2d-events`: copy the events to the device.
+- `strategy`: clear output, preprocess if needed, and run the final kernel.
+- `device-ready`: wall time from H2D start until the grid is ready on the
+  device, excluding buffer preparation and D2H.
+- `d2h-grid`: copy the grid to host memory.
+- `pipeline`: synchronized host wall time covering H2D, strategy, and D2H.
+- `processing-total`: wall time for buffer preparation plus the pipeline.
+
+The pipeline timer excludes input preparation, buffer preparation, and CSV
+writes. CUDA stage rows contain both synchronized CUDA event and host
+wall time. Host memory is pageable. The `cuda_event_ms` field is blank where
+it was not measured. The grid is computed for each window but not persisted.
+
+`summary.json` reports count, mean, nearest-rank median and p95, and
+population standard deviation for each stage across all slices, plus event
+counts, input-preparation statistics, and whole-run throughput. `metadata.json`
+records configuration, source, build, CPU and GPU details, and timing definitions.
+Run folders include backend and key parameters, such as
+`run-cpu-reference-w100000us-b5-*` or
+`run-cuda-event-scatter-w100000us-b5-t256-*`. The result schema is version 4.
+A run that fails before EOF does not write
+metadata or summary; existing CSV rows remain in its run directory.
+
+Offline HDF5 playback measures ready-window processing. It does not by itself
+measure live camera capture-to-result latency or a sustained live queue.
+
+## Comparing CPU and CUDA
+
+Run both builds on the same machine with the same recording, slice duration,
+bin count, and sensor resolution. Join `windows.csv` and `samples.csv` by
+`sequence`; inspect event count and rate beside each time. For a host-grid
+consumer, compare `cpu/processing-total` with
+`<strategy>/processing-total`. CUDA `device-ready` shows when its grid is
+ready for a GPU consumer, but this experiment does not measure the competing
+CPU-voxelization-plus-grid-upload path. It cannot establish that device-output
+break-even point from these two runs alone.
+
+Stage timings show where time goes: event H2D, strategy execution, grid D2H,
+and preparation. `run_wall_ms` and its throughput rates include input
+waiting and CSV writing, but exclude source opening and JSON output. Each
+CUDA stage currently synchronizes its stop event, so the measured pipeline
+reflects sequential stages rather than an overlapped streaming design.
 
 ## Profiling
 
-On a GPU host with SDK and Nsight installed:
+The `cuda-profile` build adds source information for Nsight. These wrappers
+profile the whole recording, so use a short recording for focused traces:
 
 ```bash
-scripts/profile_nsys.sh results/profiles/timeline data/raw/sparklers.hdf5
-scripts/profile_ncu.sh results/profiles/kernels data/raw/sparklers.hdf5
+scripts/profile_nsys.sh results/profiles/event-scatter-timeline data/raw/sparklers.hdf5 \
+  --strategy event-scatter
+scripts/profile_ncu.sh results/profiles/kernels data/raw/sparklers.hdf5 \
+  --strategy event-scatter
 ```
 
-Use `cuda-profile` (`RelWithDebInfo`, `-lineinfo`) for source correlation and
-Release for latency. Do not use CUDA `-G` for benchmarking. `ncu --set full`
-requests occupancy, memory, stalls, and atomic metrics; some counters need
-hardware permissions. Nsight wrappers print an actionable message when the
-tool is absent. `nvtx3` annotations cover input preparation, transfers, clear,
-preprocessing and final kernels when its header is found.
+CUDA builds require NVTX3 headers. NVTX ranges label input reads, conversion,
+transfers, output clearing, preprocessing, and final kernels. Profiler timing
+should be kept separate from baseline latency results. The experiment's
+`windows.csv` and `samples.csv` contain its own clock measurements; NVTX
+ranges are collected only when the program runs under Nsight Systems. The
+Nsight Systems wrapper writes `results/profiles/event-scatter-timeline.nsys-rep`
+for the example above. Open that report in Nsight Systems to see the named
+ranges beside CUDA activity, or run
+`nsys stats --report nvtx_sum results/profiles/event-scatter-timeline.nsys-rep`
+for an aggregate range summary.
